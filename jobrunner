@@ -21,9 +21,23 @@ add_job_to_queue() {
       return 1
    fi
 
-   queue_lock
-   queue_add $(job_pickle "$1" "$2" "$3")
-   queue_unlock
+   queue_lock $QUEUEFILE
+   queue_add $QUEUEFILE $(job_pickle "$1" "$2" "$3")
+   queue_unlock $QUEUEFILE
+}
+
+show_usage() {
+   cat << __EOF__
+   Name:       $(basename $0)
+   Desc:       TODO
+   Usage:      $(basename $0) [options] <cmd>
+               -h    print usage
+   Commands:
+               add
+               queuelength
+               show
+               run
+__EOF__
 }
 
 #
@@ -32,7 +46,7 @@ add_job_to_queue() {
 while getopts $CARGS opt
 do
    case $opt in
-      h) log "Usage: $(basename $0) [options] <cmd> <args>" ;;
+      h) show_usage; exit 0 ;;
       *) die "Unrecognised option" ;;
    esac
 done
@@ -41,9 +55,9 @@ cmd=$1
 shift
 
 case $cmd in
-   add) add_job_to_queue ;;
-   queuelength) queue_length ;;
-   show) queue_dump ;;
+   add) add_job_to_queue "$1" "$2" "$3" ;;
+   queuelength) queue_length $QUEUEFILE ;;
+   show) queue_dump $QUEUEFILE ;;
    run) true ;;
    *) die "Unrecognised command $cmd" ;;
 esac
