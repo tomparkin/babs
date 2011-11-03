@@ -12,9 +12,17 @@ __get_section() {
 }
 
 # $1 -- ini file path
-ini_get_sections() {
+ini_get_section_list() {
    test -f "$1" || return 1
    grep "^\[" "$1" | sed 's=\[==g;s=\]==g;s=#.*$==g' | tr '\n' ' '
+}
+
+# $1 -- ini file path
+# $2 -- section name
+ini_get_section() {
+   test -f "$1" || return 1
+   test "x${2}" = "x" && return 1
+   __get_section "$1" "$2" | sed 's=#.*$==g'
 }
 
 # $1 -- ini file path

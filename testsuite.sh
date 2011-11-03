@@ -115,7 +115,7 @@ test_ini_functions() {
    . $(dirname $0)/libini.sh || test_fail "libini load"
 
    # Fuzz
-   ini_get_sections && test_fail "ini_get_sections() with null arg"
+   ini_get_section_list && test_fail "ini_get_section_list() with null arg"
    ini_get_value && test_fail "ini_get_value() with null arg"
 
    # Generate test file
@@ -123,7 +123,8 @@ test_ini_functions() {
    local if=/tmp/$(basename $0)-$$-config.ini
 
    rm -f $if && touch $if
-   ini_get_sections $if || test_fail "ini_get_sections() with empty file"
+   ini_get_section_list $if || test_fail "ini_get_section_list() with empty file"
+   ini_get_section $if "foobar" || test_fail "ini_get_section() with empty file"
 
    cat << __EOF__ > $if
 [global]
@@ -148,14 +149,18 @@ legcount =3 # it is a three leg dog
 #legcount=2
 __EOF__
   
-   # get_sections 
-   ini_get_sections $if || test_fail "ini_get_sections() with populated file"
-   ini_get_sections $if | grep global || test_fail "ini_get_sections() global section"
-   ini_get_sections $if | grep zebra || test_fail "ini_get_sections() zebra section"
-   ini_get_sections $if | grep snake || test_fail "ini_get_sections() snake section"
-   ini_get_sections $if | grep threelegdog || test_fail "ini_get_sections() threelegdog section"
-   ini_get_sections $if | grep monkey && test_fail "ini_get_sections() monkey section"
-   ini_get_sections $if | grep "zebra.*zoo" && test_fail "ini_get_sections() zebra/zoo section"
+   # get_section_list
+   ini_get_section_list $if || test_fail "ini_get_section_list() with populated file"
+   ini_get_section_list $if | grep global || test_fail "ini_get_section_list() global section"
+   ini_get_section_list $if | grep zebra || test_fail "ini_get_section_list() zebra section"
+   ini_get_section_list $if | grep snake || test_fail "ini_get_section_list() snake section"
+   ini_get_section_list $if | grep threelegdog || test_fail "ini_get_section_list() threelegdog section"
+   ini_get_section_list $if | grep monkey && test_fail "ini_get_section_list() monkey section"
+   ini_get_section_list $if | grep "zebra.*zoo" && test_fail "ini_get_section_list() zebra/zoo section"
+
+   # get_section
+   ini_get_section $if global || test_fail "ini_get_section() with populated file"
+   ini_get_section $if snake | grep "colour.*Multi" || test_fail "ini_get_section() snake check content"
 
    # get_value
    test "$(ini_get_value $if global name)" = "Theodore" || test_fail "ini_get_value() global name"
