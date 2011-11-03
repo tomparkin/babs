@@ -1,0 +1,49 @@
+#!/bin/bash
+#
+# Job runner for autobuilder (et al)
+#
+readonly CARGS="h"
+readonly QUEUEFILE=/tmp/$(basename $0)-queue
+
+. $(dirname $0)/liblog.sh
+. $(dirname $0)/libjob.sh
+. $(dirname $0)/libqueue.sh
+
+# $1 -- job id
+# $2 -- job path
+# $3 -- report path
+add_job_to_queue() {
+   local job=""
+
+   if ! job_pickle "$1" "$2" "$3" > /dev/null 2>&1
+   then
+      err "Bad job specification"
+      return 1
+   fi
+
+   queue_lock
+   queue_add $(job_pickle "$1" "$2" "$3")
+   queue_unlock
+}
+
+#
+# Entry point
+#
+while getopts $CARGS opt
+do
+   case $opt in
+      h) log "Usage: $(basename $0) [options] <cmd> <args>" ;;
+      *) die "Unrecognised option" ;;
+   esac
+done
+shift $((OPTIND-1))
+cmd=$1
+shift
+
+case $cmd in
+   add) add_job_to_queue ;;
+   queuelength) queue_length ;;
+   show) queue_dump ;;
+   run) true ;;
+   *) die "Unrecognised command $cmd" ;;
+esac
