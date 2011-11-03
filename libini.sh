@@ -27,6 +27,14 @@ ini_get_section() {
 
 # $1 -- ini file path
 # $2 -- section name
+ini_get_values_in_section() {
+   test -f "$1" || return 1
+   test "x${2}" = "x" && return 1
+   ini_get_section "$1" "$2" | sed 's/^\[.*$//g;s/^.*=//g'
+}
+
+# $1 -- ini file path
+# $2 -- section name
 # $3 -- property name
 ini_get_value() {
    test -f "$1" || return 1

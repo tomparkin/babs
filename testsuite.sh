@@ -116,6 +116,8 @@ test_ini_functions() {
 
    # Fuzz
    ini_get_section_list && test_fail "ini_get_section_list() with null arg"
+   ini_get_section && test_fail "ini_get_section() with null arg"
+   ini_get_values_in_section && test_fail "ini_get_values_in_section() with null arg"
    ini_get_value && test_fail "ini_get_value() with null arg"
 
    # Generate test file
@@ -161,6 +163,12 @@ __EOF__
    # get_section
    ini_get_section $if global || test_fail "ini_get_section() with populated file"
    ini_get_section $if snake | grep "colour.*Multi" || test_fail "ini_get_section() snake check content"
+
+   # get_values_in_section
+   ini_get_values_in_section $if threelegdog || test_fail "ini_get_values_in_section() with populated file"
+   ini_get_values_in_section $if threelegdog | grep "Brown" || test_fail "ini_get_values_in_section() threelegdog check content"
+   ini_get_values_in_section $if threelegdog | grep "=" && test_fail "ini_get_values_in_section() check ="
+   ini_get_values_in_section $if threelegdog | grep "legcount" && test_fail "ini_get_values_in_section() check property"
 
    # get_value
    test "$(ini_get_value $if global name)" = "Theodore" || test_fail "ini_get_value() global name"
