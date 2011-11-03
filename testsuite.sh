@@ -98,7 +98,20 @@ test_queue_functions() {
    queue_flush $qf || test_fail "queue_flush() for filled queue"
 }
 
+# pmrpc
+test_pmrpc_functions() {
+   . $(dirname $0)/libpmrpc.sh || test_fail "libpmrpc load"
+
+   # Fuzz
+   pmrpc_run_command && test_fail "pmrpc_run_command() with no args"
+   pmrpc_run_command $(whoami) 1O.O.O.1 "cat /proc/cpuinfo" && test_fail "pmrpc_run_command() invalid IP"
+   pmrpc_run_command $(whoami) 10.0.0.1 && test_fail "pmrpc_run_command() no command"
+
+   pmrpc_run_command $(whoami) 127.0.0.1 "cat /proc/cpuinfo" || test_fail "pmrpc_run_command() localhost cpuinfo"
+}
+
 test_log_functions
 test_job_functions
 test_queue_functions
+test_pmrpc_functions
 echo "Success :-)"
