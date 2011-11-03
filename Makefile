@@ -9,11 +9,14 @@ COMMONLIBS  += libqueue.sh
 
 QUIET			:= @
 
-.PHONY: release tree_is_clean
+.PHONY: release tree_is_clean clean
 release: tree_is_clean $(TARGETS)
 
 tree_is_clean:
 	$(QUIET) git diff
+
+clean:
+	rm -f autobuilder-*.tgz jobrunner-*.tgz
 
 autobuilder-%.tgz: autobuilder $(COMMONLIBS)
 	$(QUIET) mkdir -p .staging/opt/autobuilder/bin
