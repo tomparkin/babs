@@ -36,6 +36,7 @@ show_usage() {
 __EOF__
 }
 
+logts() { log "[$(date)] $@"; }
 trim_string() { echo "$@" | sed 's=^ \+==g;s= \+$==g'; }
 
 parse_configuration() {
@@ -147,29 +148,6 @@ get_current_revision() {
    echo $current_rev
 }
 
-# $1 -- build id number
-# Return true if tree needs a build, false otherwise
-tree_is_ready_for_build() {
-   local current_rev=
-   local previous_rev=
-
-   test "x$1" = "x" && return 1
-
-   previous_rev="$(get_last_build_revision ${BUILD_TITLE[$1]})"
-   dbg "Previous revision for ${BUILD_TITLE[$1]} is $previous_rev"
-
-   current_rev="$(get_current_revision $1)"
-   if test "x$current_rev" = "x"
-   then
-      err "Failed to get current revision number"
-      return 1
-   fi
-
-   dbg "Current revision for ${BUILD_TITLE[$1]} is $current_rev"
-
-   test "$previous_rev" != "$current_rev"
-}
-
 # $1 -- ip address
 get_machine_queue_length() {
    test -n "$1" || return 1
@@ -177,25 +155,29 @@ get_machine_queue_length() {
 }
 
 # $1 -- ip address
-# $2 -- build id number
+show_machine_queue() {
+   test -n "$1" || return 1
+   pmrpc_run_command $REMOTE_USER $1 "$JOBRUNNER_PATH show"
+}
+
+# $1 -- revision
+# $2 -- ip address
+# $3 -- build id number
 push_build_to_runner_machine() {
    local current_rev=
+   local ip=
+   local build_id=
    local jobcmd=
 
-   test "x$1" = "x" && return 1
-
-   current_rev="$(get_current_revision $2)"
-   if test "x$current_rev" = "x"
-   then
-      err "Failed to get current revision number"
-      return 1
-   fi
+   test "x$1" = "x" && return 1 || current_rev="$1"
+   test "x$2" = "x" && return 1 || ip="$2"
+   test "x$3" = "x" && return 1 || build_id="$3"
 
    # HACK!
    local myip=10.0.0.186
-   jobcmd="$JOBRUNNER_PATH add $current_rev $myip:${BUILD_SCRIPT[$2]} $myip:/foo/bar/baz"
-   dbg "Asking $REMOTE_USER@$1 to execute job command $jobcmd"
-   pmrpc_run_command $REMOTE_USER $1 "$jobcmd"
+   jobcmd="$JOBRUNNER_PATH add $current_rev $myip:${BUILD_SCRIPT[$build_id]} $myip:/foo/bar/baz"
+   dbg "Asking $REMOTE_USER@$ip to execute job command $jobcmd"
+   pmrpc_run_command $REMOTE_USER $ip "$jobcmd"
 }
 
 # Select a runner to use
@@ -239,6 +221,7 @@ done
 
 test -f "$CONFIG_FILE_PATH" || die "Configuration file $CONFIG_FILE_PATH not found"
 
+logts "Parse configuration from $CONFIG_FILE_PATH"
 parse_configuration || die "Failed to parse configuration $CONFIG_FILE_PATH"
 
 while true
@@ -246,17 +229,41 @@ do
    # Check the tree for each of the builds
    for ((i=0;i<$NUMBER_OF_BUILDS;i++))
    do
-      if tree_is_ready_for_build $i
+      # What is revision is the tree at?
+      previous_revision="$(get_last_build_revision ${BUILD_TITLE[$i]})"
+      if ! current_revision=$(get_current_revision $i)
       then
-         dbg "${BUILD_TITLE[$i]} needs a build"
-         if runner=$(pick_runner_machine)
-         then
-            push_build_to_runner_machine $runner $i || err "Failed to add ${BUILD_TITLE[$i]} build to runner $runner"
-         else
-            err "Failed to select a runner machine from pool: $MACHINE_POOL"
-         fi
+         err "Failed to determine tree revision for ${BUILD_TITLE[$i]}"
+         continue
+      fi
+
+      # Does the tree need building?
+      if test "$previous_revision" != "$current_revision"
+      then
+         logts "${BUILD_TITLE[$i]} needs a build (last build was $previous_revision, current rev is $current_revision"
       else
-         dbg "${BUILD_TITLE[$i]} is up to date"
+         logts "${BUILD_TITLE[$i]} is up to date at revision $current_revision"
+         continue
+      fi
+
+      # Select which machine in the pool should execute the build
+      if runner=$(pick_runner_machine)
+      then
+         logts "Selected $runner to execute build"
+         show_machine_queue $runner
+      else
+         err "Failed to select a runner machine from pool: $MACHINE_POOL"
+         continue
+      fi
+
+      # Push the build out
+      if push_build_to_runner_machine $current_revision $runner $i
+      then
+         logts "Scheduled build $current_revision on $runner"
+         set_last_build_revision "${BUILD_TITLE[$i]}" "$current_revision"
+      else
+         err "Failed to add ${BUILD_TITLE[$i]} build to runner $runner"
+         continue
       fi
    done
 
