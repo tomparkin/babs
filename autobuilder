@@ -1,0 +1,115 @@
+#!/bin/bash
+#
+# Autobuilder script
+#
+readonly CARGS="hf:"
+CONFIG_FILE_PATH="/etc/autobuilder.ini"
+
+# Read in from the configuration file
+INTERVAL=
+MACHINE_POOL=
+REMOTE_USER=
+
+# Arrays populated per config section
+NUMBER_OF_BUILDS=0
+declare -a BUILD_TITLE
+declare -a CHECKOUT_METHOD
+declare -a MODULES_FILE_ROOT
+declare -a BRANCH
+declare -a BUILD_SCRIPT
+
+# Load library functions
+. $(dirname $0)/liblog.sh
+. $(dirname $0)/libini.sh
+
+show_usage() {
+   cat << __EOF__
+   Name:    $(basename $0)
+   Desc:    TODO
+   Usage:   $(basename $0) [options] <cmd>
+            -h    print usage information
+            -f    configuration file [default: $CONFIG_FILE_PATH]
+__EOF__
+}
+
+trim_string() { echo "$@" | sed 's=^ \+==g;s= \+$==g'; }
+
+parse_configuration() {
+   local i=
+   local n=0
+
+   # First, extract the global configuration information
+   INTERVAL=$(ini_get_value $CONFIG_FILE_PATH global interval)
+   test "x$INTERVAL" = "x" && return 1
+   dbg "Interval = $INTERVAL"
+
+   REMOTE_USER=$(ini_get_value $CONFIG_FILE_PATH global remote_username)
+   test "x$REMOTE_USER" = "x" && return 1
+   dbg "Remote user = $REMOTE_USER"
+
+   # Now extract the machines from the machine pool
+   for i in $(ini_get_values_in_section $CONFIG_FILE_PATH machine_pool)
+   do
+      MACHINE_POOL="$MACHINE_POOL $i"
+   done
+   MACHINE_POOL=$(trim_string $MACHINE_POOL)
+   test "x$MACHINE_POOL" = "x" && return 1
+   dbg "Machine pool = $MACHINE_POOL"
+
+   # Parse the buildspec sections
+   for i in $(ini_get_section_list $CONFIG_FILE_PATH)
+   do
+      # Ignore the global and machine pool sections...
+      test "global" = "$i" && continue
+      test "machine_pool" = "$i" && continue
+
+      BUILD_TITLE[$n]=$i
+      CHECKOUT_METHOD[$n]=$(ini_get_value $CONFIG_FILE_PATH $i checkout_method)
+      MODULES_FILE_ROOT[$n]=$(ini_get_value $CONFIG_FILE_PATH $i modules_file_root)
+      BRANCH[$n]=$(ini_get_value $CONFIG_FILE_PATH $i branch)
+      BUILD_SCRIPT[$n]=$(ini_get_value $CONFIG_FILE_PATH $i build_script)
+    
+      # We must have at least this subset of possible values defined
+      test "x${CHECKOUT_METHOD[$n]}" = "x" && return 1
+      test "x${MODULES_FILE_ROOT[$n]}" = "x" && return 1
+      test "x${BUILD_SCRIPT[$n]}" = "x" && return 1
+ 
+      dbg "Adding build ${BUILD_TITLE[$n]}:"
+      dbg "    checkout method   = ${CHECKOUT_METHOD[$n]}"
+      dbg "    modules file root = ${MODULES_FILE_ROOT[$n]}"
+      dbg "    branch            = ${BRANCH[$n]}"
+      dbg "    build script      = ${BUILD_SCRIPT[$n]}"
+
+      NUMBER_OF_BUILDS=$((NUMBER_OF_BUILDS+1))
+      n=$((n+1))
+   done
+}
+
+#
+# Entry point
+#
+while getopts $CARGS opt
+do
+   case $opt in
+      h) show_usage; exit 0 ;;
+      f) CONFIG_FILE_PATH=$OPTARG ;;
+      *) die "Unrecognised option" ;;
+   esac   
+done
+
+test -f "$CONFIG_FILE_PATH" || die "Configuration file $CONFIG_FILE_PATH not found"
+
+parse_configuration || die "Failed to parse configuration $CONFIG_FILE_PATH"
+
+while true
+do
+   # Check the tree for each of the builds
+   for ((i=0;i<$NUMBER_OF_BUILDS;i++))
+   do
+      dbg "TODO: check tree for ${BUILD_TITLE[$i]}"
+   done
+
+   # Sleep till the next time
+   dbg "Sleeping for $INTERVAL seconds"
+   sleep $INTERVAL
+done
