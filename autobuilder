@@ -4,6 +4,7 @@
 #
 readonly CARGS="hf:"
 CONFIG_FILE_PATH="/etc/autobuilder.ini"
+LAST_BUILT_LOG="/tmp/$(basename $0)-lastbuilt.txt"
 
 # Read in from the configuration file
 INTERVAL=
@@ -85,6 +86,79 @@ parse_configuration() {
    done
 }
 
+# $1 -- build name
+get_last_build_revision() {
+   if test -f "$LAST_BUILT_LOG"
+   then
+      grep "$1" $LAST_BUILT_LOG | sed 's/^.*=//g;s/ //g'
+   else
+      false
+   fi
+}
+
+# $1 -- build name
+# $2 -- build revision
+set_last_build_revision() {
+   if test -f "$LAST_BUILT_LOG"
+   then
+      grep -v "$1" $LAST_BUILT_LOG > ${LAST_BUILT_LOG}.new
+   fi
+   echo "$1 = $2" >> ${LAST_BUILT_LOG}.new && mv ${LAST_BUILT_LOG}.new ${LAST_BUILT_LOG}
+}
+
+# $1 -- modules file path
+# $2 -- branch name (optional)
+cvs_get_build_rev() {
+   local branch="HEAD"
+   local cmd=""
+   test "x$1" = "x" && return 1
+   test "x$2" && branch="$2"
+   cmd="cvs co -p -r $branch Products/${1}/modules 2>&1 | grep Revision | cut -d' ' -f3"
+   dbg "$cmd"
+   eval $cmd
+}
+
+# $1 -- modules file path
+# $2 -- branch name (optional)
+snssvn_get_build_rev() {
+   local branch="trunk"
+   local cmd=""
+   test "x$1" = "x" && return 1
+   test "$2" != "trunk" && branch="branches/$2"
+   cmd="svn cat -r HEAD http://svn.pace.internal/svn/s-and-s/Products/${1}/${branch}/modules | grep Revision | cut -d' ' -f3"
+   dbg "$cmd"
+   eval $cmd
+}
+
+# $1 -- build id number
+# Return true if tree needs a build, false otherwise
+tree_is_ready_for_build() {
+   local current_rev=
+   local previous_rev=
+
+   test "x$1" = "x" && return 1
+
+   previous_rev="$(get_last_build_revision ${BUILD_TITLE[$1]})"
+   dbg "Previous revision for ${BUILD_TITLE[$1]} is $previous_rev"
+
+   case ${CHECKOUT_METHOD[$1]} in
+      cvs) current_rev="$(cvs_get_build_rev ${MODULES_FILE_ROOT[$1]} ${BRANCH[$1]})" ;;
+      snssvn) current_rev="$(snssvn_get_build_rev ${MODULES_FILE_ROOT[$1]} ${BRANCH[$1]})" ;;
+      *) err "Unsupported checkout method ${CHECKOUT_METHOD[$1]}" ;;
+   esac
+   current_rev=$(trim_string "$current_rev")
+
+   if test "x$current_rev" = "x"
+   then
+      err "Failed to get current revision number"
+      return 1
+   fi
+
+   dbg "Current revision for ${BUILD_TITLE[$1]} is $current_rev"
+
+   test "$previous_rev" != "$current_rev"
+}
+
 #
 # Entry point
 #
@@ -106,7 +180,12 @@ do
    # Check the tree for each of the builds
    for ((i=0;i<$NUMBER_OF_BUILDS;i++))
    do
-      dbg "TODO: check tree for ${BUILD_TITLE[$i]}"
+      if tree_is_ready_for_build $i
+      then
+         dbg "TODO: kick off build for ${BUILD_TITLE[$i]}"
+      else
+         dbg "${BUILD_TITLE[$i]} is up to date"
+      fi
    done
 
    # Sleep till the next time
