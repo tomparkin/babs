@@ -134,6 +134,20 @@ snssvn_get_build_rev() {
 }
 
 # $1 -- build id number
+get_current_revision() {
+   local current_rev=
+   test "x$1" = "x" && return 1
+   case ${CHECKOUT_METHOD[$1]} in
+      cvs) current_rev="$(cvs_get_build_rev ${MODULES_FILE_ROOT[$1]} ${BRANCH[$1]})" ;;
+      snssvn) current_rev="$(snssvn_get_build_rev ${MODULES_FILE_ROOT[$1]} ${BRANCH[$1]})" ;;
+      *) err "Unsupported checkout method ${CHECKOUT_METHOD[$1]}" ;;
+   esac
+   current_rev=$(trim_string "$current_rev")
+   test "x$current_rev" = "x" && return 1
+   echo $current_rev
+}
+
+# $1 -- build id number
 # Return true if tree needs a build, false otherwise
 tree_is_ready_for_build() {
    local current_rev=
@@ -144,13 +158,7 @@ tree_is_ready_for_build() {
    previous_rev="$(get_last_build_revision ${BUILD_TITLE[$1]})"
    dbg "Previous revision for ${BUILD_TITLE[$1]} is $previous_rev"
 
-   case ${CHECKOUT_METHOD[$1]} in
-      cvs) current_rev="$(cvs_get_build_rev ${MODULES_FILE_ROOT[$1]} ${BRANCH[$1]})" ;;
-      snssvn) current_rev="$(snssvn_get_build_rev ${MODULES_FILE_ROOT[$1]} ${BRANCH[$1]})" ;;
-      *) err "Unsupported checkout method ${CHECKOUT_METHOD[$1]}" ;;
-   esac
-   current_rev=$(trim_string "$current_rev")
-
+   current_rev="$(get_current_revision $1)"
    if test "x$current_rev" = "x"
    then
       err "Failed to get current revision number"
@@ -168,6 +176,28 @@ get_machine_queue_length() {
    pmrpc_run_command $REMOTE_USER $1 "$JOBRUNNER_PATH queuelength"
 }
 
+# $1 -- ip address
+# $2 -- build id number
+push_build_to_runner_machine() {
+   local current_rev=
+   local jobcmd=
+
+   test "x$1" = "x" && return 1
+
+   current_rev="$(get_current_revision $2)"
+   if test "x$current_rev" = "x"
+   then
+      err "Failed to get current revision number"
+      return 1
+   fi
+
+   # HACK!
+   local myip=10.0.0.186
+   jobcmd="$JOBRUNNER_PATH add $current_rev $myip:${BUILD_SCRIPT[$2]} $myip:/foo/bar/baz"
+   dbg "Asking $REMOTE_USER@$1 to execute job command $jobcmd"
+   pmrpc_run_command $REMOTE_USER $1 "$jobcmd"
+}
+
 # Select a runner to use
 pick_runner_machine() {
    local l=
@@ -180,13 +210,14 @@ pick_runner_machine() {
    do
       if l=$(get_machine_queue_length "$m")
       then
+         dbg "Machine $m has $l jobs queued"
          if test -z "$minlen" || test $l -lt $minlen
          then
             minlen=$l
             idlemachine=$m
          fi
       else
-         err "Failed to complete pmrpc request to $m"
+         err "Failed to complete pmrpc request to $m (machine said: $l)"
       fi
    done
 
@@ -217,9 +248,10 @@ do
    do
       if tree_is_ready_for_build $i
       then
+         dbg "${BUILD_TITLE[$i]} needs a build"
          if runner=$(pick_runner_machine)
          then
-            dbg "TODO: ask $runner to handle the build"
+            push_build_to_runner_machine $runner $i || err "Failed to add ${BUILD_TITLE[$i]} build to runner $runner"
          else
             err "Failed to select a runner machine from pool: $MACHINE_POOL"
          fi
