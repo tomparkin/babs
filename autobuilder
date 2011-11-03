@@ -3,6 +3,8 @@
 # Autobuilder script
 #
 readonly CARGS="hf:"
+
+JOBRUNNER_PATH="/opt/jobrunner/bin/jobrunner"
 CONFIG_FILE_PATH="/etc/autobuilder.ini"
 LAST_BUILT_LOG="/tmp/$(basename $0)-lastbuilt.txt"
 
@@ -22,6 +24,7 @@ declare -a BUILD_SCRIPT
 # Load library functions
 . $(dirname $0)/liblog.sh
 . $(dirname $0)/libini.sh
+. $(dirname $0)/libpmrpc.sh
 
 show_usage() {
    cat << __EOF__
@@ -69,12 +72,12 @@ parse_configuration() {
       MODULES_FILE_ROOT[$n]=$(ini_get_value $CONFIG_FILE_PATH $i modules_file_root)
       BRANCH[$n]=$(ini_get_value $CONFIG_FILE_PATH $i branch)
       BUILD_SCRIPT[$n]=$(ini_get_value $CONFIG_FILE_PATH $i build_script)
-    
+
       # We must have at least this subset of possible values defined
       test "x${CHECKOUT_METHOD[$n]}" = "x" && return 1
       test "x${MODULES_FILE_ROOT[$n]}" = "x" && return 1
       test "x${BUILD_SCRIPT[$n]}" = "x" && return 1
- 
+
       dbg "Adding build ${BUILD_TITLE[$n]}:"
       dbg "    checkout method   = ${CHECKOUT_METHOD[$n]}"
       dbg "    modules file root = ${MODULES_FILE_ROOT[$n]}"
@@ -159,6 +162,38 @@ tree_is_ready_for_build() {
    test "$previous_rev" != "$current_rev"
 }
 
+# $1 -- ip address
+get_machine_queue_length() {
+   test -n "$1" || return 1
+   pmrpc_run_command $REMOTE_USER $1 "$JOBRUNNER_PATH queuelength"
+}
+
+# Select a runner to use
+pick_runner_machine() {
+   local l=
+   local m=
+   local minlen=
+   local idlemachine=
+
+   # Pick a runner based on who has the shortest queue
+   for m in $MACHINE_POOL
+   do
+      if l=$(get_machine_queue_length "$m")
+      then
+         if test -z "$minlen" || test $l -lt $minlen
+         then
+            minlen=$l
+            idlemachine=$m
+         fi
+      else
+         err "Failed to complete pmrpc request to $m"
+      fi
+   done
+
+   test -n "$idlemachine" || return 1
+   echo $idlemachine
+}
+
 #
 # Entry point
 #
@@ -168,7 +203,7 @@ do
       h) show_usage; exit 0 ;;
       f) CONFIG_FILE_PATH=$OPTARG ;;
       *) die "Unrecognised option" ;;
-   esac   
+   esac
 done
 
 test -f "$CONFIG_FILE_PATH" || die "Configuration file $CONFIG_FILE_PATH not found"
@@ -182,7 +217,12 @@ do
    do
       if tree_is_ready_for_build $i
       then
-         dbg "TODO: kick off build for ${BUILD_TITLE[$i]}"
+         if runner=$(pick_runner_machine)
+         then
+            dbg "TODO: ask $runner to handle the build"
+         else
+            err "Failed to select a runner machine from pool: $MACHINE_POOL"
+         fi
       else
          dbg "${BUILD_TITLE[$i]} is up to date"
       fi
