@@ -110,8 +110,67 @@ test_pmrpc_functions() {
    pmrpc_run_command $(whoami) 127.0.0.1 "cat /proc/cpuinfo" || test_fail "pmrpc_run_command() localhost cpuinfo"
 }
 
+# ini
+test_ini_functions() {
+   . $(dirname $0)/libini.sh || test_fail "libini load"
+
+   # Fuzz
+   ini_get_sections && test_fail "ini_get_sections() with null arg"
+   ini_get_value && test_fail "ini_get_value() with null arg"
+
+   # Generate test file
+   local i=
+   local if=/tmp/$(basename $0)-$$-config.ini
+
+   rm -f $if && touch $if
+   ini_get_sections $if || test_fail "ini_get_sections() with empty file"
+
+   cat << __EOF__ > $if
+[global]
+name = Theodore
+shoesize = 10
+
+[zebra] # I saw one at the zoo, it seemed to long for something lost
+colour = Black and white
+legcount = 4
+
+[snake]
+colour=Multicolour # different snakes could be different colours
+legcount=0
+
+[threelegdog]
+colour =Brown
+legcount =3 # it is a three leg dog
+
+# two legs or four legs?
+#[monkey]
+#color=olive
+#legcount=2
+__EOF__
+  
+   # get_sections 
+   ini_get_sections $if || test_fail "ini_get_sections() with populated file"
+   ini_get_sections $if | grep global || test_fail "ini_get_sections() global section"
+   ini_get_sections $if | grep zebra || test_fail "ini_get_sections() zebra section"
+   ini_get_sections $if | grep snake || test_fail "ini_get_sections() snake section"
+   ini_get_sections $if | grep threelegdog || test_fail "ini_get_sections() threelegdog section"
+   ini_get_sections $if | grep monkey && test_fail "ini_get_sections() monkey section"
+   ini_get_sections $if | grep "zebra.*zoo" && test_fail "ini_get_sections() zebra/zoo section"
+
+   # get_value
+   test "$(ini_get_value $if global name)" = "Theodore" || test_fail "ini_get_value() global name"
+   test "$(ini_get_value $if snake colour)" = "Multicolour" || test_fail "ini_get_value() snake colour"
+   test "$(ini_get_value $if snake legcount)" = "0" || test_fail "ini_get_value() snake legcount"
+   test "$(ini_get_value $if threelegdog legcount)" = "3" || test_fail "ini_get_value() threelegdog legcount"
+   ini_get_value $if monkey legcount && test_fail "ini_get_value() monkey legcount"
+
+   rm -f $if
+}
+
 test_log_functions
 test_job_functions
 test_queue_functions
 test_pmrpc_functions
+test_ini_functions
+
 echo "Success :-)"
