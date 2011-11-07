@@ -199,6 +199,9 @@ test_event_functions() {
    event_nonblocking_read $eq || test_fail "event_nonblocking_read() event pending"
    event_nonblocking_read $eq && test_fail "event_nonblocking_read() with no events pending"
 
+   ( sleep 1 && event_write $eq "EVENT_ID3" ) &
+   event_blocking_read $eq || test_fail "event_blocking_read() with event arriving in 1s"
+
    rm -f $eq
 }
 
