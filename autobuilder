@@ -356,7 +356,7 @@ generate_report_script() {
    test "x${1}" = "x" && return 1
    test "x${2}" = "x" && return 1
    test "x${3}" = "x" && return 1
-   local script=${WORKDIR}/$(basename $0)-${2}-${3}-$(date +%s)_REPORT.sh
+   local script=${WORKDIR}/$(basename $0)-${BUILD_TITLE[$1]}-${2}-${3}-$(date +%s)_REPORT.sh
    cat > $script << __EOF__
 #!/bin/bash
 
@@ -376,7 +376,7 @@ generate_build_script() {
    test "x${1}" = "x" && return 1
    test "x${2}" = "x" && return 1
    test "x${3}" = "x" && return 1
-   local script=${WORKDIR}/$(basename $0)-${2}-${3}-$(date +%s)_BUILD.sh
+   local script=${WORKDIR}/$(basename $0)-${BUILD_TITLE[$1]}-${2}-${3}-$(date +%s)_BUILD.sh
    cat > $script << __EOF__
 #!/bin/bash
 
@@ -387,6 +387,7 @@ generate_build_script() {
 AUTOBUILDER_BRANCH_NAME=${BRANCH[$1]}
 AUTOBUILDER_REVISION=$2
 AUTOBUILDER_BUILD_TITLE=${BUILD_TITLE[$1]}
+AUTOBUILDER_WORKROOT=/export/home/autobuild
 
 # The rest of this script is pasted from ${BUILD_SCRIPT[$1]}
 $(grep -v "^#\!" ${BUILD_SCRIPT[$1]})
