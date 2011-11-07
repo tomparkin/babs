@@ -47,6 +47,25 @@ __EOF__
 logts() { log "[$(date)] $@"; }
 trim_string() { echo "$@" | sed 's=^ \+==g;s= \+$==g'; }
 
+# $1 -- runner ip address
+select_report_ip_address() {
+   # If a machine has multiple interfaces we need to guess
+   # which interface to use.  This is a kludge but it works
+   # OK assuming Pace corporate v.s. Cora VLAN addresses.
+   # Really we should look at route to figure it out.
+   local ip=
+
+   for ip in $(ifconfig | awk '/inet addr/ { split($2,a,/:/); print a[2]; }')
+   do
+      # FIXME: use route...
+      if test "${ip%%.*}" = ${1%%.*}
+      then
+         echo $ip
+         return 0
+      fi
+   done
+}
+
 parse_configuration() {
    local i=
    local n=0
@@ -173,19 +192,24 @@ show_machine_queue() {
 # $3 -- build script
 push_build_to_runner_machine() {
    local current_rev=
-   local ip=
+   local runner_ip=
+   local my_ip=
    local build_script=
    local jobcmd=
 
    test "x$1" = "x" && return 1 || current_rev="$1"
-   test "x$2" = "x" && return 1 || ip="$2"
+   test "x$2" = "x" && return 1 || runner_ip="$2"
    test "x$3" = "x" && return 1 || build_script="$3"
 
-   # HACK!
-   local myip=10.0.0.186
-   jobcmd="$JOBRUNNER_PATH add $current_rev $myip:$build_script $myip:/foo/bar/baz"
-   dbg "Asking $REMOTE_USER@$ip to execute job command $jobcmd"
-   pmrpc_run_command $REMOTE_USER $ip "$jobcmd"
+   if ! my_ip=$(select_report_ip_address "$runner_ip")
+   then
+      err "Failed to determine which local interface to use for reporting"
+      return 1
+   fi
+
+   jobcmd="$JOBRUNNER_PATH add $current_rev $my_ip:$build_script $my_ip:/foo/bar/baz"
+   dbg "Asking $REMOTE_USER@$runner_ip to execute job command $jobcmd"
+   pmrpc_run_command $REMOTE_USER $runner_ip "$jobcmd"
 }
 
 # Select a runner to use
