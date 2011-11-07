@@ -128,7 +128,7 @@ snssvn_get_build_rev() {
    local branch="trunk"
    local cmd=""
    test "x$1" = "x" && return 1
-   test "$2" != "trunk" && branch="branches/$2"
+   test "x$2" != "x" && test "$2" != "trunk" && branch="branches/$2"
    cmd="svn cat -r HEAD http://svn.pace.internal/svn/s-and-s/Products/${1}/${branch}/modules | grep Revision | cut -d' ' -f3"
    dbg "$cmd"
    eval $cmd
@@ -240,9 +240,10 @@ do
       # Does the tree need building?
       if test "$previous_revision" != "$current_revision"
       then
-         logts "${BUILD_TITLE[$i]} needs a build (last build was $previous_revision, current rev is $current_revision"
+         test "x$previous_revision" = "x" && msg="never built before" || msg="last build was $previous_revision"
+         logts "${BUILD_TITLE[$i]} needs a build ($msg, current rev is $current_revision)"
       else
-         logts "${BUILD_TITLE[$i]} is up to date at revision $current_revision"
+         dbg "${BUILD_TITLE[$i]} is up to date at revision $current_revision"
          continue
       fi
 
