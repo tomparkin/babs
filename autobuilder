@@ -4,14 +4,18 @@
 #
 readonly CARGS="hf:"
 
+# Absolute paths
 JOBRUNNER_PATH="/opt/jobrunner/bin/jobrunner"
 CONFIG_FILE_PATH="/etc/autobuilder.ini"
-LAST_BUILT_LOG="/tmp/$(basename $0)-lastbuilt.txt"
-EVENT_QUEUE="/tmp/$(basename $0)-$$-eventqueue.txt"
+
+# These are relative to $WORKDIR, and are set after config parsing
+LAST_BUILT_LOG="$(basename $0)-lastbuilt.txt"
+EVENT_QUEUE="$(basename $0)-$$-eventqueue.txt"
 
 # Read in from the configuration file
 MACHINE_POOL=
 REMOTE_USER=
+WORKDIR=
 
 # Arrays populated per config section
 NUMBER_OF_BUILDS=0
@@ -49,6 +53,10 @@ parse_configuration() {
    REMOTE_USER=$(ini_get_value $CONFIG_FILE_PATH global remote_username)
    test "x$REMOTE_USER" = "x" && return 1
    dbg "Remote user = $REMOTE_USER"
+
+   WORKDIR=$(ini_get_value $CONFIG_FILE_PATH global working_directory)
+   test "x$WORKDIR" = "x" && return 1
+   dbg "Working directory = $WORKDIR"
 
    # Now extract the machines from the machine pool
    for i in $(ini_get_values_in_section $CONFIG_FILE_PATH machine_pool)
@@ -275,6 +283,10 @@ test -f "$CONFIG_FILE_PATH" || die "Configuration file $CONFIG_FILE_PATH not fou
 
 logts "Parse configuration from $CONFIG_FILE_PATH"
 parse_configuration || die "Failed to parse configuration $CONFIG_FILE_PATH"
+
+# Set up paths for workdir files
+LAST_BUILT_LOG="${WORKDIR}/${LAST_BUILT_LOG}"
+EVENT_QUEUE="${WORKDIR}/${EVENT_QUEUE}"
 
 while true
 do
