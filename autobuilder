@@ -3,16 +3,20 @@
 # Autobuilder script
 #
 readonly CARGS="hf:"
+readonly EVENT_ID_SCAN_TREE="@@DO_TREE_SCAN"
+readonly EVENT_ID_BUILD_REPORT_READY="@@REPORT_READY"
+readonly EVENT_ID_PROCESS_BUILD_QUEUE="@@PROCESS_BUILD_QUEUE"
 
 # Absolute paths
 JOBRUNNER_PATH="/opt/jobrunner/bin/jobrunner"
 CONFIG_FILE_PATH="/etc/autobuilder.ini"
 
 # These are relative to $WORKDIR, and are set after config parsing
+IN_FLIGHT_LOG="$(basename $0)-in-flight.txt"
 LAST_BUILT_LOG="$(basename $0)-lastbuilt.txt"
-EVENT_QUEUE="$(basename $0)-$$-eventqueue.txt"
-BUILD_QUEUE="$(basename $0)-$$-buildqueue.txt"
-REPORT_QUEUE="$(basename $0)-$$-reportqueue.txt"
+EVENT_QUEUE="$(basename $0)-eventqueue.txt"
+BUILD_QUEUE="$(basename $0)-buildqueue.txt"
+REPORT_QUEUE="$(basename $0)-reportqueue.txt"
 
 # Read in from the configuration file
 MACHINE_POOL=
@@ -41,6 +45,8 @@ show_usage() {
    Usage:   $(basename $0) [options] <cmd>
             -h    print usage information
             -f    configuration file [default: $CONFIG_FILE_PATH]
+            -r    <id@outcome@report ip:report path> report a build result
+            -i    <build name@revision> inject a build
 __EOF__
 }
 
@@ -137,6 +143,44 @@ set_last_build_revision() {
    echo "$1 = $2" >> ${LAST_BUILT_LOG}.new && mv ${LAST_BUILT_LOG}.new ${LAST_BUILT_LOG}
 }
 
+# $1 -- build name
+# $2 -- build revision
+# $3 -- runner
+build_info_to_inflight() { echo "$(date +%H:%M:%S-%d/%m/%Y) $1 $2 runner $3"; }
+
+# $1 -- inflight log line
+inflight_to_build_name() { echo "$1" | cut -d" " -f2; }
+
+# $1 -- inflight log line
+inflight_to_build_rev() { echo "$1" | cut -d" " -f3; }
+
+# $1 -- inflight log line
+inflight_to_build_runner() { echo "$1" | cut -d" " -f5; }
+
+# $1 -- build name
+# $2 -- build revision
+# $3 -- runner
+add_build_to_inflight_list() { build_info_to_inflight $1 $2 $3 >> $IN_FLIGHT_LOG; }
+
+# $1 -- build name
+# $2 -- build revision
+remove_build_from_inflight_list() {
+   if test -f "$IN_FLIGHT_LOG"
+   then
+      grep -v "$1 $2" "$IN_FLIGHT_LOG" > ${IN_FLIGHT_LOG}.new && mv ${IN_FLIGHT_LOG}.new ${IN_FLIGHT_LOG}
+   fi
+}
+
+# $1 -- build revision
+lookup_inflight_build_by_revision() {
+   local l=
+   test "x$1" = "x" && return 1
+   if test -f "$IN_FLIGHT_LOG"
+   then
+      awk -v rev=$1 '$3 == rev { print }'
+   fi
+}
+
 # $1 -- modules file path
 # $2 -- branch name (optional)
 cvs_get_build_rev() {
@@ -190,16 +234,19 @@ show_machine_queue() {
 # $1 -- revision
 # $2 -- ip address
 # $3 -- build script
+# $4 -- report script
 push_build_to_runner_machine() {
    local current_rev=
    local runner_ip=
-   local my_ip=
    local build_script=
+   local report_script=
+   local my_ip=
    local jobcmd=
 
    test "x$1" = "x" && return 1 || current_rev="$1"
    test "x$2" = "x" && return 1 || runner_ip="$2"
    test "x$3" = "x" && return 1 || build_script="$3"
+   test "x$4" = "x" && return 1 || report_script="$4"
 
    if ! my_ip=$(select_report_ip_address "$runner_ip")
    then
@@ -207,7 +254,7 @@ push_build_to_runner_machine() {
       return 1
    fi
 
-   jobcmd="$JOBRUNNER_PATH add $current_rev $my_ip:$build_script $my_ip:/foo/bar/baz"
+   jobcmd="$JOBRUNNER_PATH add $current_rev $my_ip:$build_script $my_ip:$report_script"
    dbg "Asking $REMOTE_USER@$runner_ip to execute job command $jobcmd"
    pmrpc_run_command $REMOTE_USER $runner_ip "$jobcmd"
 }
@@ -278,6 +325,16 @@ do_tree_scan() {
    done
 }
 
+# $1 -- build id
+# $2 -- build revision
+buildspec_to_buildqueue() { echo "$1@$2"; }
+
+# $1 -- buildqueue line
+buildqueue_to_build_id() { echo "$1" | cut -d"@" -f1; }
+
+# $1 -- buildqueue line
+buildqueue_to_build_rev() { echo "$1" | cut -d"@" -f2; }
+
 # Add a build the the build queue for passing out to the
 # machine pool for processing.  The actual push process is
 # carried out via. process_build_queue().
@@ -288,26 +345,73 @@ enqueue_build() {
    test "x$2" = "x" && return 2
 
    queue_lock "$BUILD_QUEUE"
-   queue_add "$BUILD_QUEUE"  "$1@$2"
+   queue_add "$BUILD_QUEUE" $(buildspec_to_buildqueue "$1" "$2")
    queue_unlock "$BUILD_QUEUE"
+}
+
+# $1 -- build id
+# $2 -- revision
+# $3 -- runner
+generate_report_script() {
+   test "x${1}" = "x" && return 1
+   test "x${2}" = "x" && return 1
+   test "x${3}" = "x" && return 1
+   local script=${WORKDIR}/$(basename $0)-${2}-${3}-$(date +%s)_REPORT.sh
+   cat > $script << __EOF__
+#!/bin/bash
+
+# Input arguments: \$1 -- SUCCESS or FAIL; \$2 -- report ip/path string
+# This script should be executed on the build master by the build runner machine
+
+# Return result for ${BUILD_TITLE[$1]} rev $2 executed on runner $3
+$0 -f ${CONFIG_FILE_PATH} report ${BUILD_TITLE[$1]} ${2} ${3} \$1 \$2
+__EOF__
+   test -f "$script" && chmod +x "$script" && echo "$script"
+}
+
+# $1 -- build id
+# $2 -- revision
+# $3 -- runner
+generate_build_script() {
+   test "x${1}" = "x" && return 1
+   test "x${2}" = "x" && return 1
+   test "x${3}" = "x" && return 1
+   local script=${WORKDIR}/$(basename $0)-${2}-${3}-$(date +%s)_BUILD.sh
+   cat > $script << __EOF__
+#!/bin/bash
+
+# This script should be executed on the build runner.  It is autogenerated
+# from ${BUILD_SCRIPT[$1]} with some variables added by $(basename $0).
+
+# These variables are provided by $(basename $0)
+AUTOBUILDER_BRANCH_NAME=${BRANCH[$1]}
+AUTOBUILDER_REVISION=$2
+AUTOBUILDER_BUILD_TITLE=${BUILD_TITLE[$1]}
+
+# The rest of this script is pasted from ${BUILD_SCRIPT[$1]}
+$(grep -v "^#\!" ${BUILD_SCRIPT[$1]})
+__EOF__
+   test -f "$script" && chmod +x "$script" && echo "$script"
 }
 
 # Pass each entry in the build queue out to the machine pool for execution
 process_build_queue() {
    local runner=
-   local buildspec=
-   local ret=0
+   local q=
    local id=
    local rev=
+   local build_script=
+   local report_script=
+   local ret=0
 
    while true
    do
       # Pop a buildspec off the queue
       queue_lock "$BUILD_QUEUE"
-      buildspec=$(queue_pop_eldest "$BUILD_QUEUE")
+      q=$(queue_pop_eldest "$BUILD_QUEUE")
       queue_unlock "$BUILD_QUEUE"
-      id="$(echo $buildspec | cut -d"@" -f1)"
-      rev="$(echo $buildspec | cut -d"@" -f2)"
+      id="$(buildqueue_to_build_id "$q")"
+      rev="$(buildqueue_to_build_rev "$q")"
 
       # If we didn't get a spec we're at the end of the queue...
       test -n "$rev" && test -n "$id" || break
@@ -320,18 +424,58 @@ process_build_queue() {
          continue
       fi
 
+      # Generate a build script for the runner
+      if ! build_script=$(generate_build_script $id $rev $runner)
+      then
+         err "Failed to generate build script for ${BUILD_TITLE[$id]} revision $rev"
+         ret=$((ret+1))
+         continue
+      fi
+
+      # Generate a report script for the runner
+      if ! report_script=$(generate_report_script $id $rev $runner)
+      then
+         err "Failed to generate reporting script for ${BUILD_TITLE[$id]} revision $rev"
+         ret=$((ret+1))
+         continue
+      fi
+
       # Push the build out
-      if push_build_to_runner_machine "$rev" $runner "${BUILD_SCRIPT[$id]}"
+      if push_build_to_runner_machine "$rev" $runner "${BUILD_SCRIPT[$id]}" "$report_script"
       then
          logts "${BUILD_TITLE[$id]} revision $rev to be processed by runner $runner"
          set_last_build_revision "${BUILD_TITLE[$id]}" "$rev"
+         add_build_to_inflight_list "${BUILD_TITLE[$id]}" "$rev" "$runner"
       else
          err "Failed to push ${BUILD_TITLE[$id]} revision $rev build to runner $runner"
          ret=$((ret+1))
          continue
       fi
    done
+   dbg "Finished processing build queue"
    return $ret
+}
+
+# Add a build result to the reporting queue
+report_result() {
+   # TODO: check input string
+   queue_lock "$REPORT_QUEUE"
+   queue_add "$@"
+   queue_unlock "$REPORT_QUEUE"
+   event_write "$EVENT_QUEUE" "$EVENT_ID_BUILD_REPORT_READY"
+}
+
+# Add a build request into the build queue
+request_build() {
+   err "Not implemented yet"
+   false
+}
+
+# Trigger a revision scan
+request_revision_scan() {
+   dbg "Request tree scan ($EVENT_QUEUE)"
+   event_write "$EVENT_QUEUE" "$EVENT_ID_SCAN_TREE"
+   event_write "$EVENT_QUEUE" "$EVENT_ID_PROCESS_BUILD_QUEUE"
 }
 
 #
@@ -345,6 +489,7 @@ do
       *) die "Unrecognised option" ;;
    esac
 done
+shift $((OPTIND-1))
 
 test -f "$CONFIG_FILE_PATH" || die "Configuration file $CONFIG_FILE_PATH not found"
 
@@ -353,28 +498,46 @@ parse_configuration || die "Failed to parse configuration $CONFIG_FILE_PATH"
 
 # Set up paths for workdir files
 LAST_BUILT_LOG="${WORKDIR}/${LAST_BUILT_LOG}"
+IN_FLIGHT_LOG="${WORKDIR}/${IN_FLIGHT_LOG}"
 EVENT_QUEUE="${WORKDIR}/${EVENT_QUEUE}"
 BUILD_QUEUE="${WORKDIR}/${BUILD_QUEUE}"
 REPORT_QUEUE="${WORKDIR}/${REPORT_QUEUE}"
 
-# Ensure we clean up after ourselves...
-trap "rm -f $BUILD_QUEUE $EVENT_QUEUE $REPORT_QUEUE" EXIT
+case $1 in
+   scan) request_revision_scan ;;
+   requestbuild) shift; request_build "$@" ;;
+   report) shift; report_result "$@" ;;
+   run)
+      # Ensure we clean up after ourselves...
+      trap "rm -f $BUILD_QUEUE $EVENT_QUEUE $REPORT_QUEUE" EXIT
 
-while true
-do
-   # Wait for an input event
-   if event=$(event_blocking_read $EVENT_QUEUE)
-   then
-      dbg "New event: $event"
-      case $event in
-         DOSCAN) do_tree_scan ;;
-         *) err "Unrecognised input event \"$event\"" ;;
-      esac
-   fi
-
-   # Process the build queue
-   if ! process_build_queue
-   then
-      err "Errors processing the build queue -- some builds may be dropped :-("
-   fi
-done
+      # Event loop
+      while true
+      do
+         # Wait for an input event
+         if event=$(event_blocking_read $EVENT_QUEUE)
+         then
+            dbg "New event: $event"
+            case $event in
+               $EVENT_ID_SCAN_TREE)
+                  do_tree_scan
+               ;;
+               $EVENT_ID_BUILD_REPORT_READY)
+                  if ! process_report_queue
+                  then
+                     err "Errors processing the report queue -- some reports may be dropped :-("
+                  fi
+               ;;
+               $EVENT_ID_PROCESS_BUILD_QUEUE)
+                  if ! process_build_queue
+                  then
+                     err "Errors processing the build queue -- some builds may be dropped :-("
+                  fi
+               ;;
+               *) err "Unrecognised input event \"$event\"" ;;
+            esac
+         fi
+      done
+   ;;
+   *) die "Unrecognised command $1" ;;
+esac
