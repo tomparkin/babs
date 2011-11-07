@@ -7,9 +7,9 @@ readonly CARGS="hf:"
 JOBRUNNER_PATH="/opt/jobrunner/bin/jobrunner"
 CONFIG_FILE_PATH="/etc/autobuilder.ini"
 LAST_BUILT_LOG="/tmp/$(basename $0)-lastbuilt.txt"
+EVENT_QUEUE="/tmp/$(basename $0)-$$-eventqueue.txt"
 
 # Read in from the configuration file
-INTERVAL=
 MACHINE_POOL=
 REMOTE_USER=
 
@@ -25,6 +25,8 @@ declare -a BUILD_SCRIPT
 . $(dirname $0)/liblog.sh
 . $(dirname $0)/libini.sh
 . $(dirname $0)/libpmrpc.sh
+. $(dirname $0)/libqueue.sh
+. $(dirname $0)/libevent.sh
 
 show_usage() {
    cat << __EOF__
@@ -44,10 +46,6 @@ parse_configuration() {
    local n=0
 
    # First, extract the global configuration information
-   INTERVAL=$(ini_get_value $CONFIG_FILE_PATH global interval)
-   test "x$INTERVAL" = "x" && return 1
-   dbg "Interval = $INTERVAL"
-
    REMOTE_USER=$(ini_get_value $CONFIG_FILE_PATH global remote_username)
    test "x$REMOTE_USER" = "x" && return 1
    dbg "Remote user = $REMOTE_USER"
@@ -207,25 +205,12 @@ pick_runner_machine() {
    echo $idlemachine
 }
 
-#
-# Entry point
-#
-while getopts $CARGS opt
-do
-   case $opt in
-      h) show_usage; exit 0 ;;
-      f) CONFIG_FILE_PATH=$OPTARG ;;
-      *) die "Unrecognised option" ;;
-   esac
-done
+# Scan VCS trees for updates and push builds to machines
+do_tree_scan() {
+   local previous_revision=
+   local current_rev=
+   local runner=
 
-test -f "$CONFIG_FILE_PATH" || die "Configuration file $CONFIG_FILE_PATH not found"
-
-logts "Parse configuration from $CONFIG_FILE_PATH"
-parse_configuration || die "Failed to parse configuration $CONFIG_FILE_PATH"
-
-while true
-do
    # Check the tree for each of the builds
    for ((i=0;i<$NUMBER_OF_BUILDS;i++))
    do
@@ -240,6 +225,7 @@ do
       # Does the tree need building?
       if test "$previous_revision" != "$current_revision"
       then
+         local msg=
          test "x$previous_revision" = "x" && msg="never built before" || msg="last build was $previous_revision"
          logts "${BUILD_TITLE[$i]} needs a build ($msg, current rev is $current_revision)"
       else
@@ -267,8 +253,37 @@ do
          continue
       fi
    done
+}
 
-   # Sleep till the next time
-   dbg "Sleeping for $INTERVAL seconds"
-   sleep $INTERVAL
+#
+# Entry point
+#
+
+# Clean up after ourselves...
+trap "rm -f $BUILD_QUEUE $EVENT_QUEUE" EXIT
+
+while getopts $CARGS opt
+do
+   case $opt in
+      h) show_usage; exit 0 ;;
+      f) CONFIG_FILE_PATH=$OPTARG ;;
+      *) die "Unrecognised option" ;;
+   esac
+done
+
+test -f "$CONFIG_FILE_PATH" || die "Configuration file $CONFIG_FILE_PATH not found"
+
+logts "Parse configuration from $CONFIG_FILE_PATH"
+parse_configuration || die "Failed to parse configuration $CONFIG_FILE_PATH"
+
+while true
+do
+   # Wait for an input event
+   if event=$(event_blocking_read $EVENT_QUEUE)
+   then
+      case $event in
+         DOSCAN) do_tree_scan ;;
+         *) err "Unrecognised input event \"$event\"" ;;
+      esac
+   fi
 done
