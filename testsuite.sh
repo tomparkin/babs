@@ -180,10 +180,33 @@ __EOF__
    rm -f $if
 }
 
+test_event_functions() {
+   . $(dirname $0)/libevent.sh || test_fail "libevent load"
+
+   # Fuzz
+   event_write && test_fail "event_write() with NULL data"
+   event_blocking_read && test_fail "event_blocking_read() with NULL data"
+   event_nonblocking_read && test_fail "event_nonblocking_read() with NULL data"
+
+   local eq="/tmp/$(basename $0)-$$-eventqueue"
+
+   # Writing events
+   event_write $eq "EVENT_ID1" || test_fail "event_write() with id1"
+   event_write $eq "EVENT_ID2" || test_fail "event_write() with id2"
+
+   # Reading events
+   event_blocking_read $eq || test_fail "event_blocking_read() with event pending"
+   event_nonblocking_read $eq || test_fail "event_nonblocking_read() event pending"
+   event_nonblocking_read $eq && test_fail "event_nonblocking_read() with no events pending"
+
+   rm -f $eq
+}
+
 test_log_functions
 test_job_functions
 test_queue_functions
 test_pmrpc_functions
 test_ini_functions
+test_event_functions
 
 echo "Success :-)"
