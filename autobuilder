@@ -239,7 +239,7 @@ pick_runner_machine() {
    echo $idlemachine
 }
 
-# Scan VCS trees for updates and push builds to machines
+# Scan VCS trees for updates, queue builds for processing
 do_tree_scan() {
    local current_revision=
    local previous_revision=
