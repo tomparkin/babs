@@ -442,7 +442,7 @@ process_build_queue() {
       fi
 
       # Push the build out
-      if push_build_to_runner_machine "$rev" $runner "${BUILD_SCRIPT[$id]}" "$report_script"
+      if push_build_to_runner_machine "$rev" $runner "$build_script" "$report_script"
       then
          logts "${BUILD_TITLE[$id]} revision $rev to be processed by runner $runner"
          set_last_build_revision "${BUILD_TITLE[$id]}" "$rev"
