@@ -28,14 +28,16 @@ tree_is_clean:
 clean:
 	rm -f autobuilder-*.tgz jobrunner-*.tgz
 
-autobuilder-%.tgz: autobuilder $(COMMONLIBS)
-	$(QUIET) mkdir -p .staging/opt/autobuilder/bin
-	$(QUIET) cp $^ .staging/opt/autobuilder/bin
-	$(QUIET) tar -czf $@ -C .staging opt
+autobuilder-%.tgz: autobuilder autobuilder.ini $(COMMONLIBS)
+	$(QUIET) mkdir -p .staging/opt/autobuilder/bin .staging/etc
+	$(QUIET) cp autobuilder $(COMMONLIBS) .staging/opt/autobuilder/bin
+	$(QUIET) cp autobuilder.ini .staging/etc
+	$(QUIET) tar -czf $@ -C .staging opt etc
 	$(QUIET) rm -rf .staging
 
-jobrunner-%.tgz: jobrunner $(COMMONLIBS)
-	$(QUIET) mkdir -p .staging/opt/jobrunner/bin
-	$(QUIET) cp $^ .staging/opt/jobrunner/bin
-	$(QUIET) tar -czf $@ -C .staging opt
+jobrunner-%.tgz: jobrunner jobrunner.ini $(COMMONLIBS)
+	$(QUIET) mkdir -p .staging/opt/jobrunner/bin .staging/etc
+	$(QUIET) cp jobrunner $(COMMONLIBS) .staging/opt/jobrunner/bin
+	$(QUIET) cp jobrunner.ini .staging/etc
+	$(QUIET) tar -czf $@ -C .staging opt etc
 	$(QUIET) rm -rf .staging
