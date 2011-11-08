@@ -6,6 +6,7 @@ COMMONLIBS  += libjob.sh
 COMMONLIBS  += liblog.sh
 COMMONLIBS  += libpmrpc.sh
 COMMONLIBS  += libqueue.sh
+COMMONLIBS  += libevent.sh
 
 QUIET			:= @
 
@@ -13,7 +14,7 @@ QUIET			:= @
 release: tree_is_clean $(TARGETS)
 
 tree_is_clean:
-	$(QUIET) git diff
+	$(QUIET) git diff-index --quiet HEAD --
 
 clean:
 	rm -f autobuilder-*.tgz jobrunner-*.tgz
