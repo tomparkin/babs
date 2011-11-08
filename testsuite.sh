@@ -101,6 +101,7 @@ test_queue_functions() {
 
 # pmrpc
 test_pmrpc_functions() {
+   . $(dirname $0)/libutil.sh || test_fail "libutil load"
    . $(dirname $0)/libpmrpc.sh || test_fail "libpmrpc load"
 
    # Fuzz
