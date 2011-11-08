@@ -8,6 +8,7 @@ readonly QUEUEFILE=/tmp/$(basename $0)-queue
 . $(dirname $0)/liblog.sh
 . $(dirname $0)/libjob.sh
 . $(dirname $0)/libqueue.sh
+. $(dirname $0)/libevent.sh
 
 # $1 -- job id
 # $2 -- job path
@@ -24,6 +25,94 @@ add_job_to_queue() {
    queue_lock $QUEUEFILE
    queue_add $QUEUEFILE $(job_pickle "$1" "$2" "$3")
    queue_unlock $QUEUEFILE
+}
+
+# $1 -- ip:script pair
+download_runscript() {
+   test "x$1" = "x" && return 1
+   local ip=$(echo $1 | cut -d":" -f1)
+   local s=$(echo $1 | cut -d":" -f2)
+   test "x$ip" = "x" && return 1
+   test "x$s" = "x" && return 1
+   local dl=/tmp/$(basename $s)
+   dbg "scp $s $dl"
+   scp $s $dl 2> /dev/null && echo $dl
+}
+
+# $1 -- ip:script pair
+# $2 -- result (SUCCESS|FAIL)
+# $3 -- report file
+report_result() {
+   test "x$1" = "x" && return 1
+   test "x$2" = "x" && return 1
+   test -f "$3" || return 1
+   local ip=$(echo $1 | cut -d":" -f1)
+   local s=$(echo $1 | cut -d":" -f2)
+   test "x$ip" = "x" && return 1
+   test "x$s" = "x" && return 1
+   dbg "ssh $ip $s $2 $3"
+   ssh $ip "$s $2 $3" /dev/null
+}
+
+# $1 -- job script
+generate_reportfile() {
+   test "x$1" = "x" && return 1
+   local report="/tmp/$(basename $1)_REPORT"
+   echo $report
+}
+
+# $1 -- job script
+# $2 -- report file
+execute_job() {
+   test "x$1" = "x" && return 1
+   test "x$2" = "x" && return 1
+   local job="$1"
+   local report="$2"
+   $job &> $report
+}
+
+do_run() {
+   local job=""
+   local id=""
+   local runscript=""
+   local report_file=""
+   local result=""
+
+   while true
+   do
+      job="$(event_blocking_read "$QUEUEFILE")"
+      id="$(job_unpickle_id "$job")"
+
+      logts "New job:"
+      logts "   master        = $(job_unpickle_scriptpath "$job" | cut -d":" -f1)"
+      logts "   ID            = $id"
+      logts "   runscript     = $(job_unpickle_scriptpath "$job" | cut -d":" -f2)"
+      logts "   reportscript  = $(job_unpickle_reportpath "$job" | cut -d":" -f2)"
+
+      if ! runscript="$(download_runscript $(job_unpickle_scriptpath "$job"))"
+      then
+         err "Failed to pull runscript from master"
+         continue
+      fi
+
+      # Execute job
+      report_file="$(generate_reportfile $runscript)"
+      logts "Executing job ID $id, report saved to $report_file"
+      if execute_job $runscript $report_file
+      then
+         logts "Job ID $id completed successfully"
+         result="SUCCESS"
+      else
+         logts "Job ID $id failed"
+         result="FAILURE"
+      fi
+
+      # Report result
+      if ! report_result $(job_unpickle_reportpath "$job") $result $report_file
+      then
+         err "Failed to report result to master -- results may be dropped :-("
+      fi
+   done
 }
 
 show_usage() {
@@ -58,6 +147,6 @@ case $cmd in
    add) add_job_to_queue "$1" "$2" "$3" ;;
    queuelength) queue_length $QUEUEFILE ;;
    show) queue_dump $QUEUEFILE ;;
-   run) true ;;
+   run) do_run ;;
    *) die "Unrecognised command $cmd" ;;
 esac
