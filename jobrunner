@@ -2,9 +2,18 @@
 #
 # Job runner for autobuilder (et al)
 #
-readonly CARGS="h"
-readonly QUEUEFILE=/tmp/$(basename $0)-queue
+readonly CARGS="hf:"
 
+# Absolute paths
+CONFIG_FILE_PATH="/etc/jobrunner.ini"
+
+# Relative to $WORKDIR, set after config parsing
+QUEUEFILE="$(basename $0)-jobqueue.txt"
+
+# Read in from the configuration file
+WORKDIR=
+
+. $(dirname $0)/libini.sh
 . $(dirname $0)/liblog.sh
 . $(dirname $0)/libutil.sh
 . $(dirname $0)/libjob.sh
@@ -35,7 +44,8 @@ download_runscript() {
    local s=$(echo $1 | cut -d":" -f2)
    test "x$ip" = "x" && return 1
    test "x$s" = "x" && return 1
-   local dl=/tmp/$(basename $s)
+   local dl=${WORKDIR}/buildscripts/$(basename $s)
+   mkdir -p "$(dirname $dl)" || return 1
    dbg "scp $s $dl"
    scp $s $dl 2> /dev/null && echo $dl
 }
@@ -58,7 +68,8 @@ report_result() {
 # $1 -- job script
 generate_reportfile() {
    test "x$1" = "x" && return 1
-   local report="/tmp/$(basename $1)_REPORT"
+   local report="${WORKDIR}/reports/$(basename $1)_REPORT"
+   mkdir -p "$(dirname $report)" || return 1
    echo $report
 }
 
@@ -130,6 +141,12 @@ show_usage() {
 __EOF__
 }
 
+parse_configuration() {
+   WORKDIR=$(ini_get_value $CONFIG_FILE_PATH global working_directory)
+   test "x$WORKDIR" = "x" && return 1
+   dbg "Working directory = $WORKDIR"
+}
+
 #
 # Entry point
 #
@@ -137,12 +154,19 @@ while getopts $CARGS opt
 do
    case $opt in
       h) show_usage; exit 0 ;;
+      f) CONFIG_FILE_PATH="$OPTARG" ;;
       *) die "Unrecognised option" ;;
    esac
 done
 shift $((OPTIND-1))
 cmd=$1
 shift
+
+parse_configuration || die "Failed to parse configuration $CONFIG_FILE_PATH"
+
+# Set up paths for workdir files
+mkdir -p "${WORKDIR}" || die "Failed to create working directory ${WORKDIR}"
+QUEUEFILE="${WORKDIR}/${QUEUEFILE}"
 
 case $cmd in
    add) add_job_to_queue "$1" "$2" "$3" ;;

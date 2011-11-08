@@ -369,6 +369,9 @@ AUTOBUILDER_REVISION=$2
 AUTOBUILDER_BUILD_TITLE=${BUILD_TITLE[$1]}
 AUTOBUILDER_WORKROOT=/export/home/autobuild
 
+# These functions are provided by $(basename $0)
+$(grep -v "^#\!" $(dirname $0)/libreport.sh)
+
 # The rest of this script is pasted from ${BUILD_SCRIPT[$1]}
 $(grep -v "^#\!" ${BUILD_SCRIPT[$1]})
 __EOF__
@@ -600,10 +603,10 @@ shift $((OPTIND-1))
 
 test -f "$CONFIG_FILE_PATH" || die "Configuration file $CONFIG_FILE_PATH not found"
 
-logts "Parse configuration from $CONFIG_FILE_PATH"
 parse_configuration || die "Failed to parse configuration $CONFIG_FILE_PATH"
 
 # Set up paths for workdir files
+mkdir -p "${WORKDIR}" || die "Failed to create working directory ${WORKDIR}"
 LAST_BUILT_LOG="${WORKDIR}/${LAST_BUILT_LOG}"
 IN_FLIGHT_LOG="${WORKDIR}/${IN_FLIGHT_LOG}"
 EVENT_QUEUE="${WORKDIR}/${EVENT_QUEUE}"

@@ -15,6 +15,7 @@ COMMONLIBS  += libpmrpc.sh
 COMMONLIBS  += libqueue.sh
 COMMONLIBS  += libevent.sh
 COMMONLIBS  += libutil.sh
+COMMONLIBS  += libreport.sh
 
 QUIET			:= @
 
