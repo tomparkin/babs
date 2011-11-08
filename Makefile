@@ -1,6 +1,13 @@
+ifdef IGNOREDIRTY
+CHECKTREE	:=
+TGZ_SUFFIX	:= -dirty
+else
+CHECKTREE	:= tree_is_clean
+TGZ_SUFFIX  :=
+endif
 REVISION		:= $(shell git rev-parse HEAD | cut -c-8)
-TARGETS		:= autobuilder-$(REVISION).tgz 
-TARGETS		+= jobrunner-$(REVISION).tgz
+TARGETS		:= autobuilder-$(REVISION)$(TGZ_SUFFIX).tgz 
+TARGETS		+= jobrunner-$(REVISION)$(TGZ_SUFFIX).tgz
 COMMONLIBS	:= libini.sh
 COMMONLIBS  += libjob.sh
 COMMONLIBS  += liblog.sh
@@ -11,7 +18,7 @@ COMMONLIBS  += libevent.sh
 QUIET			:= @
 
 .PHONY: release tree_is_clean clean
-release: tree_is_clean $(TARGETS)
+release: $(CHECKTREE) $(TARGETS)
 
 tree_is_clean:
 	$(QUIET) git diff-index --quiet HEAD --
