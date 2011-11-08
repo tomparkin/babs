@@ -33,6 +33,7 @@ declare -a BUILD_SCRIPT
 
 # Load library functions
 . $(dirname $0)/liblog.sh
+. $(dirname $0)/libutil.sh
 . $(dirname $0)/libini.sh
 . $(dirname $0)/libpmrpc.sh
 . $(dirname $0)/libqueue.sh
@@ -48,27 +49,6 @@ show_usage() {
             -r    <id@outcome@report ip:report path> report a build result
             -i    <build name@revision> inject a build
 __EOF__
-}
-
-trim_string() { echo "$@" | sed 's=^ \+==g;s= \+$==g'; }
-
-# $1 -- runner ip address
-select_report_ip_address() {
-   # If a machine has multiple interfaces we need to guess
-   # which interface to use.  This is a kludge but it works
-   # OK assuming Pace corporate v.s. Cora VLAN addresses.
-   # Really we should look at route to figure it out.
-   local ip=
-
-   for ip in $(ifconfig | awk '/inet addr/ { split($2,a,/:/); print a[2]; }')
-   do
-      # FIXME: use route...
-      if test "${ip%%.*}" = ${1%%.*}
-      then
-         echo $ip
-         return 0
-      fi
-   done
 }
 
 parse_configuration() {
@@ -89,7 +69,7 @@ parse_configuration() {
    do
       MACHINE_POOL="$MACHINE_POOL $i"
    done
-   MACHINE_POOL=$(trim_string $MACHINE_POOL)
+   MACHINE_POOL=$(util_trim_string $MACHINE_POOL)
    test "x$MACHINE_POOL" = "x" && return 1
    dbg "Machine pool = $MACHINE_POOL"
 
@@ -214,7 +194,7 @@ get_current_revision() {
       snssvn) current_rev="$(snssvn_get_build_rev ${MODULES_FILE_ROOT[$1]} ${BRANCH[$1]})" ;;
       *) err "Unsupported checkout method ${CHECKOUT_METHOD[$1]}" ;;
    esac
-   current_rev=$(trim_string "$current_rev")
+   current_rev=$(util_trim_string "$current_rev")
    test "x$current_rev" = "x" && return 1
    echo $current_rev
 }
@@ -248,7 +228,7 @@ push_build_to_runner_machine() {
    test "x$3" = "x" && return 1 || build_script="$3"
    test "x$4" = "x" && return 1 || report_script="$4"
 
-   if ! my_ip=$(select_report_ip_address "$runner_ip")
+   if ! my_ip=$(util_find_interface_on_network "$runner_ip")
    then
       err "Failed to determine which local interface to use for reporting"
       return 1
@@ -523,8 +503,8 @@ report_to_queuestring() {
       return 1
    fi
 
-   #__check_path "$5" || return 1
-   __is_dotted_quad "$3" || return 1
+   util_check_abspath_string "$5" || return 1
+   util_check_dotted_quad "$3" || return 1
 
    echo "${1}@${2}@${3}@${4}@${5}"
 }
@@ -546,7 +526,7 @@ reportstring_to_runner_ip() {
    local s=
    test "x${1}" = "x" && return 1
    s=$(echo "${1}" | cut -d"@" -f3)
-   __is_dotted_quad "$s" && echo "$s"
+   util_check_dotted_quad "$s" && echo "$s"
 }
 
 # $1 -- report string
@@ -565,7 +545,7 @@ reportstring_to_report_path() {
    local s=
    test "x${1}" = "x" && return 1
    s=$(echo "${1}" | cut -d"@" -f5)a
-   #__check_path "$s" && echo "$s"
+   util_check_abspath_string "$s" && echo "$s"
 }
 
 # Add a build result to the reporting queue

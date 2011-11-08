@@ -6,6 +6,7 @@ readonly CARGS="h"
 readonly QUEUEFILE=/tmp/$(basename $0)-queue
 
 . $(dirname $0)/liblog.sh
+. $(dirname $0)/libutil.sh
 . $(dirname $0)/libjob.sh
 . $(dirname $0)/libqueue.sh
 . $(dirname $0)/libevent.sh

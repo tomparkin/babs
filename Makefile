@@ -14,6 +14,7 @@ COMMONLIBS  += liblog.sh
 COMMONLIBS  += libpmrpc.sh
 COMMONLIBS  += libqueue.sh
 COMMONLIBS  += libevent.sh
+COMMONLIBS  += libutil.sh
 
 QUIET			:= @
 
