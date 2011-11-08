@@ -50,7 +50,6 @@ show_usage() {
 __EOF__
 }
 
-logts() { log "[$(date)] $@"; }
 trim_string() { echo "$@" | sed 's=^ \+==g;s= \+$==g'; }
 
 # $1 -- runner ip address
