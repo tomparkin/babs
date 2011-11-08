@@ -10,6 +10,12 @@
 # event queue, and hence blocking reads.
 #
 
+if ! which inotifywait &> /dev/null
+then
+   echo "ERROR: Cannot locate inotifywait, libevent.sh depends on it"
+   exit 1
+fi
+
 # treat the queue as a fifo
 __event_fifo_pop() {
    queue_pop_eldest "$1"
