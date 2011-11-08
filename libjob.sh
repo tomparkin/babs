@@ -51,7 +51,7 @@ __check_pickle() {
 
    # String has content beyond second delimter
    tmp=${tmp#*$_job_delimiter}
-   test "x$tmp" = "x" && return 1 || echo "$tmp" 1>&2
+   test "x$tmp" = "x" && return 1
 
    return 0
 }
