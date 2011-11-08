@@ -17,6 +17,22 @@ __modules_file_is_cvs() {
    ( cd $(dirname $1) && cvs status $(basename $1) &> /dev/null )
 }
 
+# Convert a number of seconds into nice time string
+# $1 -- number of seconds
+report_seconds_to_time_string() {
+   test "x$1" = "x" && return 1
+   local h=0
+   local m=0
+   local s="$1"
+   while test $s -ge 60
+   do
+      s=$((s-60))
+      m=$((m+1))
+      test $m -ge 60 && m=0 && h=$((h+1))
+   done
+   echo "${h}h${m}m${s}s"
+}
+
 # Parse errors from a build log
 # $1 -- build log file
 # $2 -- (optional) context line count
