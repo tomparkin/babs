@@ -31,11 +31,13 @@ __event_waitfor() {
 # $1 -- event file
 # $2 -- event id
 event_write() {
+   local ret=
    test "x$1" = "x" && return 1
    test "x$2" = "x" && return 1
-   queue_lock "$1"
-   queue_add "$1" "$2"
+   queue_lock "$1" && queue_add "$1" "$2"
+   ret=$?
    queue_unlock "$1"
+   return $ret
 }
 
 # $1 -- event file
