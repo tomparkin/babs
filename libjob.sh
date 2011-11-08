@@ -4,31 +4,19 @@
 #
 # Bash library of job manipulation functions
 #
-# Requires liblog.sh
+# Requires liblog.sh and libutil.sh
 #
 _job_delimiter="@"
-
-__is_dotted_quad() { echo "$1" | grep -q "[[:digit:]]\+\.[[:digit:]]\+\.[[:digit:]]\+\.[[:digit:]]\+"; }
-
-__is_good_path() {
-   # Must be an absolute path
-   test "${1:0:1}" = "/" || return 1
-
-   # No spaces...
-   if echo "$1" | grep -q [[:space:]]; then return 1; fi
-
-   return 0
-}
 
 __check_path() {
    local ip=$(echo "$1" | cut -d: -f1)
    local path=$(echo "$1" | cut -d: -f2)
 
    # We expect ip:path
-   __is_dotted_quad "$ip" || return 1
+   util_check_dotted_quad "$ip" || return 1
 
    # Make sure the path looks OK
-   __is_good_path "$path" || return 1
+   util_check_abspath_string "$path" || return 1
 
    return 0
 }

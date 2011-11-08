@@ -19,6 +19,7 @@ test_log_functions() {
 
 # Jobs
 test_job_functions() {
+   . $(dirname $0)/libutil.sh || test_fail "libutil load"
    . $(dirname $0)/libjob.sh || test_fail "libjob load"
 
    local job_id="myjobid_1"
@@ -243,11 +244,11 @@ test_util_functions() {
 }
 
 test_log_functions
+test_util_functions
 test_job_functions
 test_queue_functions
 test_pmrpc_functions
 test_ini_functions
 test_event_functions
-test_util_functions
 
 echo "Success :-)"
