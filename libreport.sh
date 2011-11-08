@@ -4,6 +4,10 @@
 #
 # Functions for assembling a build report
 #
+readonly REPORT_ERR_WORKROOT_EXISTS="WORKROOT already exists"
+readonly REPORT_ERR_CANNOT_CREATE_WORKROOT="Failed to create WORKROOT directory"
+readonly REPORT_ERR_CHECKOUT_FAILED="Checkout from SCM failed"
+readonly REPORT_ERR_BUILD_FAILED="Product build failed"
 
 # $1 -- modules file path
 __modules_file_is_svn() {
@@ -118,3 +122,46 @@ report_get_modules_file_changelog() {
 
 # Obtain all the IP addresses held by a host
 report_get_my_ip_addresses() { ifconfig | awk '/inet addr/ { split($2,a,/:/); print a[2]; }' | grep -v 127.0.0.1; }
+
+# Generate a report
+# $1 -- workroot
+# $2 -- modules file
+# $3 -- stable tag
+# $4 -- start time
+# $5 -- finish time
+# $6 -- status string (one of REPORT_ERR_*)
+report_generate() {
+   test -d "$1" || return 1
+   test -f "$2" || return 1
+   test "x$3" = "x" && return 1
+   test "x$4" = "x" && return 1
+   test "x$5" = "x" && return 1
+   test "x$6" = "x" && return 1
+
+   local ipaddr=$(report_get_my_ip_addresses | tr "\n" "/")
+   local runtime=$(report_seconds_to_time_string $(( $(date -d "$5" +%s) - $(date -d "$4" +%s) )))
+   local stable_rev=$(report_get_modules_file_stable_tag_revision "$2" "$3")
+
+cat << __EOF__
+Build:                              $AUTOBUILDER_BUILD_TITLE
+Revision:                           $AUTOBUILDER_REVISION
+Build host:                         $ipaddr
+Build directory:                    $1
+Start time:                         $4
+Finish time:                        $5
+Build runtime:                      $runtime
+Status:                             $6
+Last stable rev:                    $stable_rev
+Changeset since last stable rev:
+$(report_get_modules_file_changelog $WORKROOT/Products/C672/modules $stable_rev $AUTOBUILDER_REVISION)
+__EOF__
+
+if test "$6" = "$__ERR_BUILD_FAILED"
+then
+cat << _EOF_
+Build errors:
+$(report_extract_build_errors $WORKROOT/testbuild-log.txt)
+_EOF_
+fi
+
+}
