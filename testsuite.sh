@@ -205,11 +205,49 @@ test_event_functions() {
    rm -f $eq
 }
 
+test_util_functions() {
+   . $(dirname $0)/libutil.sh || test_fail "libutil load"
+
+   # Fuzz
+   util_check_abspath_string && test_fail "util_check_abspath_string() with NULL input"
+   util_check_dotted_quad && test_fail "util_check_dotted_quad() with NULL input"
+   util_find_interface_on_network && test_fail "util_find_interface_on_network() with NULL input"
+   util_get_ip_for_interface && test_fail "util_get_ip_for_interface() with NULL input"
+
+   # abspath check
+   util_check_abspath_string "/etc/init.d/foobar" || test_fail "util_check_abspath_string() with good input"
+   util_check_abspath_string "./etc/init.d/foobar" && test_fail "util_check_abspath_string() with relative path 1"
+   util_check_abspath_string "etc/init.d/foobar" && test_fail "util_check_abspath_string() with relative path 2"
+   util_check_abspath_string "/etc/my silly path/foobar" && test_fail "util_check_abspath_string() with spaces"
+
+   # dotted quad check
+   util_check_dotted_quad "10.0.0.1" || test_fail "util_check_dotted_quad() with good input"
+   util_check_dotted_quad "10.O.0.1" && test_fail "util_check_dotted_quad() non-numeric"
+   util_check_dotted_quad "127.0.0" && test_fail "util_check_dotted_quad() missing quad"
+   util_check_dotted_quad "127,0,0,1" && test_fail "util_check_dotted_quad() commas not dots"
+
+   # string trim
+   util_trim_string "  this is your life    " || test_fail "util_trim_string() with good input"
+   test "$(util_trim_string "  this is your life    ")" = "this is your life" || test_fail "util_trim_string() with good input output check 1"
+   test "$(util_trim_string "this is your life    ")" = "this is your life" || test_fail "util_trim_string() with good input output check 2"
+   test "$(util_trim_string "  this is your life")" = "this is your life" || test_fail "util_trim_string() with good input output check 3"
+
+   # get ip
+   util_get_ip_for_interface eth0 || test_fail "util_get_ip_for_interface() with good input"
+   util_get_ip_for_interface foobar && test_fail "util_get_ip_for_interface() with invalid interface"
+
+   # find interface
+   local eth0_ip="$(util_get_ip_for_interface eth0)"
+   util_find_interface_on_network $eth0_ip || test_fail "util_find_interface_on_network() with good input"
+   util_find_interface_on_network 123.456.789.101 && test_fail "util_find_interface_on_network() with bad input"
+}
+
 test_log_functions
 test_job_functions
 test_queue_functions
 test_pmrpc_functions
 test_ini_functions
 test_event_functions
+test_util_functions
 
 echo "Success :-)"
