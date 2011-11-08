@@ -46,8 +46,8 @@ download_runscript() {
    test "x$s" = "x" && return 1
    local dl=${WORKDIR}/buildscripts/$(basename $s)
    mkdir -p "$(dirname $dl)" || return 1
-   dbg "scp $s $dl"
-   scp $s $dl 2> /dev/null && echo $dl
+   dbg "scp $ip:$s $dl"
+   scp $ip:$s $dl 2> /dev/null && echo $dl
 }
 
 # $1 -- ip:script pair
