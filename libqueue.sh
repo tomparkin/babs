@@ -37,6 +37,7 @@ queue_add() {
    test "x${1}" = "x" && return 1
    test "x${2}" = "x" && return 1
    echo "$2" >> $1;
+   test -f "$1" || err "queue_add() no queue!!"
 }
 
 # $1 -- queue file
