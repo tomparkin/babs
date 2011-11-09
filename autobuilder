@@ -485,7 +485,7 @@ process_report_queue() {
       fi
 
       # Obtain report from jobrunner
-      if ! scp $build_runner:$build_report $REPORT_STORE/${build_title}_${build_revision}_report.txt
+      if ! scp $build_runner:$build_report $REPORT_STORE/${build_title}_${build_revision}_report.txt > /dev/null
       then
          err "Failed to copy build report from the runner"
          ret=$((ret+1))
