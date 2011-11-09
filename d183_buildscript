@@ -2,23 +2,25 @@
 #
 # D183 build
 #
-report() { report_generate "$WORKROOT" "$WORKROOT/Products/D183/modules" D183_stable "$START_TIME" "$(date)" $@; }
+report() { report_generate "$WORKROOT" "$WORKROOT/Products/D183/modules" D183_stable "$START_TIME" "$(date)" "$@" "$BUILD_LOG"; }
 
 die() {
-   report $@
+   report "$@"
    exit 1
 }
 
 export WORKROOT=${AUTOBUILDER_WORKROOT}/D183/build-${AUTOBUILDER_REVISION}-$(date +%H-%M-%S_%d.%m.%Y)
 START_TIME=$(date)
+CHECKOUT_LOG="$WORKROOT/checkout-log.txt"
+BUILD_LOG="$WORKROOT/build-log.txt"
 
 # Create the build directory
-test -d "$WORKROOT" && die $REPORT_ERR_WORKROOT_EXISTS
-mkdir -p "$WORKROOT" || die $REPORT_ERR_CANNOT_CREATE_WORKROOT
+test -d "$WORKROOT" && die "$REPORT_ERR_WORKROOT_EXISTS"
+mkdir -p "$WORKROOT" || die "$REPORT_ERR_CANNOT_CREATE_WORKROOT"
 
 # First we want to check out the sandbox
-( cd $WORKROOT && getstable -w -r $AUTOBUILDER_REVISION D183  > $WORKROOT/checkout-log.txt 2>&1 ) || die $REPORT_ERR_CHECKOUT_FAILED
+( cd $WORKROOT && getstable -w -r $AUTOBUILDER_REVISION D183  > $CHECKOUT_LOG 2>&1 ) || die "$REPORT_ERR_CHECKOUT_FAILED"
 
 # Now we want to run the build
-( cd $WORKROOT/buildsys/D183 && export WORKROOT=$WORKROOT; make testbuild > $WORKROOT/testbuild-log.txt 2>&1 ) || die $REPORT_ERR_BUILD_FAILED
+( cd $WORKROOT/buildsys/D183 && export WORKROOT=$WORKROOT; make testbuild > $BUILD_LOG 2>&1 ) || die "$REPORT_ERR_BUILD_FAILED"
 report "Build succeeded"

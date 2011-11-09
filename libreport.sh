@@ -130,6 +130,7 @@ report_get_my_ip_addresses() { ifconfig | awk '/inet addr/ { split($2,a,/:/); pr
 # $4 -- start time
 # $5 -- finish time
 # $6 -- status string (one of REPORT_ERR_*)
+# $7 -- build log file
 report_generate() {
    test -d "$1" || return 1
    test -f "$2" || return 1
@@ -137,30 +138,41 @@ report_generate() {
    test "x$4" = "x" && return 1
    test "x$5" = "x" && return 1
    test "x$6" = "x" && return 1
+   test -f "$7" || return 1
 
    local ipaddr=$(report_get_my_ip_addresses | tr "\n" "/")
    local runtime=$(report_seconds_to_time_string $(( $(date -d "$5" +%s) - $(date -d "$4" +%s) )))
-   local stable_rev=$(report_get_modules_file_stable_tag_revision "$2" "$3")
+   local stable_rev=$(report_get_modules_file_stable_tag_revision "$2" "$3" || echo unknown)
+   ipaddr=${ipaddr%/}
 
-cat << __EOF__
+# Print report header
+cat << _EOF_
 Build:                              $AUTOBUILDER_BUILD_TITLE
 Revision:                           $AUTOBUILDER_REVISION
 Build host:                         $ipaddr
 Build directory:                    $1
+Build log:                          $7
 Start time:                         $4
 Finish time:                        $5
 Build runtime:                      $runtime
 Status:                             $6
 Last stable rev:                    $stable_rev
+_EOF_
+
+# If we determined the last stable tag, print the changeset since then
+if test "$stable_rev" != "unknown"
+then
+cat << __EOF__
 Changeset since last stable rev:
-$(report_get_modules_file_changelog $WORKROOT/Products/C672/modules $stable_rev $AUTOBUILDER_REVISION)
+$(report_get_modules_file_changelog "$2" "$stable_rev" "$AUTOBUILDER_REVISION")
 __EOF__
+fi
 
 if test "$6" = "$__ERR_BUILD_FAILED"
 then
 cat << _EOF_
 Build errors:
-$(report_extract_build_errors $WORKROOT/testbuild-log.txt)
+$(report_extract_build_errors "$7")
 _EOF_
 fi
 
