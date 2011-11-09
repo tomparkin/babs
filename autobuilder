@@ -17,6 +17,7 @@ LAST_BUILT_LOG="$(basename $0)-lastbuilt.txt"
 EVENT_QUEUE="$(basename $0)-eventqueue.txt"
 BUILD_QUEUE="$(basename $0)-buildqueue.txt"
 REPORT_QUEUE="$(basename $0)-reportqueue.txt"
+REPORT_STORE="reportstore"
 
 # Read in from the configuration file
 MACHINE_POOL=
@@ -483,7 +484,18 @@ process_report_queue() {
          continue
       fi
 
-      logts "TODO: email results"
+      # Obtain report from jobrunner
+      if ! scp $build_runner:$build_report $REPORT_STORE/${build_title}_${build_revision}_report.txt
+      then
+         err "Failed to copy build report from the runner"
+         ret=$((ret+1))
+         continue
+      fi
+
+      # TODO: Tidy up build and report scripts
+
+      # TODO: reporting email
+
    done
    dbg "Finished processing report queue"
    return $ret
@@ -607,6 +619,8 @@ parse_configuration || die "Failed to parse configuration $CONFIG_FILE_PATH"
 
 # Set up paths for workdir files
 mkdir -p "${WORKDIR}" || die "Failed to create working directory ${WORKDIR}"
+REPORT_STORE="${WORKDIR}/${REPORT_STORE}"
+mkdir -p "${REPORT_STORE}" || die "Failed to create report store ${REPORT_STORE}"
 LAST_BUILT_LOG="${WORKDIR}/${LAST_BUILT_LOG}"
 IN_FLIGHT_LOG="${WORKDIR}/${IN_FLIGHT_LOG}"
 EVENT_QUEUE="${WORKDIR}/${EVENT_QUEUE}"
