@@ -67,7 +67,7 @@ parse_configuration() {
    test "x$WORKDIR" = "x" && return 1
    dbg "Working directory = $WORKDIR"
 
-   EMAIL_FROM=$(ini_get_value $CONFIG_FILE_PATH email_from)
+   EMAIL_FROM=$(ini_get_value $CONFIG_FILE_PATH global email_from)
    test "x$EMAIL_FROM" = "x" && return 1
    dbg "Email from = $EMAIL_FROM"
 
