@@ -559,7 +559,7 @@ reportstring_to_result() {
 reportstring_to_report_path() {
    local s=
    test "x${1}" = "x" && return 1
-   s=$(echo "${1}" | cut -d"@" -f5)a
+   s=$(echo "${1}" | cut -d"@" -f5)
    util_check_abspath_string "$s" && echo "$s"
 }
 
