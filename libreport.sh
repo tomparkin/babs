@@ -93,10 +93,10 @@ report_get_modules_file_stable_tag_revision() {
          url=${url%/*}/tags/$2
          if svn info ${url}/$(basename $1) &> /dev/null
          then
+            svn info ${url}/$(basename $1) | grep "Last Changed Rev" | cut -d" " -f4
+         else
             echo "Unknown tag $2"
             false
-         else
-            svn info ${url}/$(basename $1) | grep "Last Changed Rev" | cut -d" " -f4
          fi
       )
    else
