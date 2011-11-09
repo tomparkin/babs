@@ -91,7 +91,13 @@ report_get_modules_file_stable_tag_revision() {
          cd $(dirname $1)
          local url=$(svnurl)
          url=${url%/*}/tags/$2
-         svn info ${url}/$(basename $1) | grep "Last Changed Rev" | cut -d" " -f4
+         if svn info ${url}/$(basename $1) &> /dev/null
+         then
+            echo "Unknown tag $2"
+            false
+         else
+            svn info ${url}/$(basename $1) | grep "Last Changed Rev" | cut -d" " -f4
+         fi
       )
    else
       echo "Unrecognised SCM, cannot extract stable tag revision"
@@ -110,10 +116,10 @@ report_get_modules_file_changelog() {
 
    if __modules_file_is_cvs "$1"
    then
-      ( cd $(dirname $1) && cvs log -N -r$2:$3 | awk '/^revision/ { grab=1; print; next; } /^This is revision/ { print ""; grab=0; next; } grab && !/^$/ { print "   " $0; }' )
+      ( cd $(dirname $1) && cvs log -N -r$2:$3 2>&1 | awk '/^revision/ { grab=1; print; next; } /^This is revision/ { print ""; grab=0; next; } grab && !/^$/ { print "   " $0; }' )
    elif __modules_file_is_svn "$1"
    then
-      ( cd $(dirname $1) && svn log -r${3}:${2} $(basename $1) | awk '/^$/ {next} /^----/ {print ""; next;} /^r.*\|.*\|.*\|/ {print; next;} {print "   " $0; }' )
+      ( cd $(dirname $1) && svn log -r${3}:${2} $(basename $1) 2>&1 | awk '/^$/ {next} /^----/ {print ""; next;} /^r.*\|.*\|.*\|/ {print; next;} {print "   " $0; }' )
    else
       echo "Unrecognised SCM, cannot extract stable tag revision"
       return 1
@@ -142,33 +148,32 @@ report_generate() {
 
    local ipaddr=$(report_get_my_ip_addresses | tr "\n" "/")
    local runtime=$(report_seconds_to_time_string $(( $(date -d "$5" +%s) - $(date -d "$4" +%s) )))
-   local stable_rev=$(report_get_modules_file_stable_tag_revision "$2" "$3" || echo unknown)
-   ipaddr=${ipaddr%/}
+   local stable_rev=
 
 # Print report header
 cat << _EOF_
 Build:                              $AUTOBUILDER_BUILD_TITLE
 Revision:                           $AUTOBUILDER_REVISION
-Build host:                         $ipaddr
+Build host:                         ${ipaddr%/}
 Build directory:                    $1
 Build log:                          $7
 Start time:                         $4
 Finish time:                        $5
 Build runtime:                      $runtime
 Status:                             $6
-Last stable rev:                    $stable_rev
 _EOF_
 
 # If we determined the last stable tag, print the changeset since then
-if test "$stable_rev" != "unknown"
+if stable_rev=$(report_get_modules_file_stable_tag_revision "$2" "$3")
 then
 cat << __EOF__
+Last stable rev:                    $stable_rev
 Changeset since last stable rev:
 $(report_get_modules_file_changelog "$2" "$stable_rev" "$AUTOBUILDER_REVISION")
 __EOF__
 fi
 
-if test "$6" = "$__ERR_BUILD_FAILED"
+if test "$6" = "$REPORT_ERR_BUILD_FAILED"
 then
 cat << _EOF_
 Build errors:
