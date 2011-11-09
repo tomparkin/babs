@@ -23,6 +23,7 @@ REPORT_STORE="reportstore"
 MACHINE_POOL=
 REMOTE_USER=
 WORKDIR=
+EMAIL_FROM=
 
 # Arrays populated per config section
 NUMBER_OF_BUILDS=0
@@ -31,6 +32,7 @@ declare -a CHECKOUT_METHOD
 declare -a MODULES_FILE_ROOT
 declare -a BRANCH
 declare -a BUILD_SCRIPT
+declare -a EMAIL
 
 # Load library functions
 . $(dirname $0)/liblog.sh
@@ -65,6 +67,10 @@ parse_configuration() {
    test "x$WORKDIR" = "x" && return 1
    dbg "Working directory = $WORKDIR"
 
+   EMAIL_FROM=$(ini_get_value $CONFIG_FILE_PATH email_from)
+   test "x$EMAIL_FROM" = "x" && return 1
+   dbg "Email from = $EMAIL_FROM"
+
    # Now extract the machines from the machine pool
    for i in $(ini_get_values_in_section $CONFIG_FILE_PATH machine_pool)
    do
@@ -86,6 +92,7 @@ parse_configuration() {
       MODULES_FILE_ROOT[$n]=$(ini_get_value $CONFIG_FILE_PATH $i modules_file_root)
       BRANCH[$n]=$(ini_get_value $CONFIG_FILE_PATH $i branch)
       BUILD_SCRIPT[$n]=$(ini_get_value $CONFIG_FILE_PATH $i build_script)
+      EMAIL[$n]=$(ini_get_value $CONFIG_FILE_PATH $i email)
 
       # We must have at least this subset of possible values defined
       test "x${CHECKOUT_METHOD[$n]}" = "x" && return 1
@@ -97,6 +104,7 @@ parse_configuration() {
       dbg "    modules file root = ${MODULES_FILE_ROOT[$n]}"
       dbg "    branch            = ${BRANCH[$n]}"
       dbg "    build script      = ${BUILD_SCRIPT[$n]}"
+      dbg "    email             = ${EMAIL[$n]}"
 
       NUMBER_OF_BUILDS=$((NUMBER_OF_BUILDS+1))
       n=$((n+1))
@@ -111,6 +119,36 @@ get_last_build_revision() {
    else
       false
    fi
+}
+
+# $1 -- report path
+# $2 -- email to
+# $3 -- email from
+# $4 -- subject (summary string)
+email_report() {
+   test -f "$1" || return 1
+   test "x$2" = "x" && return 1
+   test "x$3" = "x" && return 1
+   test "x$4" = "x" && return 1
+   local tmp=$(mktemp)
+   local ret=0
+   test -f "$tmp" || return 1
+
+   echo "From: $3" > $tmp
+   echo "To: $2" >> $tmp
+   echo "Reply-To: $3" >> $tmp
+   echo "Subject: $4" >> $tmp
+   echo >> $tmp
+   echo "Build report follows:" >> $tmp
+   echo >> $tmp
+   cat "$1" >> $tmp
+   echo >> $tmp
+   echo >> $tmp
+
+   msmtp -t --read-envelope-from < $tmp
+   ret=$?
+   rm $tmp
+   return $ret
 }
 
 # $1 -- build name
@@ -450,6 +488,9 @@ process_report_queue() {
    local build_result=
    local build_report=
    local inflight=
+   local email=
+   local n=
+   local local_build_report=
 
    while true
    do
@@ -476,6 +517,14 @@ process_report_queue() {
          continue
       fi
 
+      # Figure out email distribution from build title
+      for ((n=0;n<$NUMBER_OF_BUILDS;n++))
+      do
+         test "${BUILD_TITLE[$n]}" = "$build_title" && break
+      done
+
+      email=$(util_trim_string ${EMAIL[$n]})
+
       # Remove from the inflight list
       if ! remove_build_from_inflight_list "$build_title" "$build_revision"
       then
@@ -485,16 +534,26 @@ process_report_queue() {
       fi
 
       # Obtain report from jobrunner
-      if ! scp $build_runner:$build_report $REPORT_STORE/${build_title}_${build_revision}_report.txt > /dev/null
+      local_build_report=$REPORT_STORE/${build_title}_${build_revision}_report.txt
+      if ! scp $build_runner:$build_report $local_build_report > /dev/null
       then
          err "Failed to copy build report from the runner"
          ret=$((ret+1))
          continue
       fi
 
-      # TODO: Tidy up build and report scripts
+      # Email job report
+      if test -n "$email"
+      then
+         if ! email_report "$local_build_report" "$email" "$EMAIL_FROM" "$build_title revision $build_revision : $build_result"
+         then
+            err "Failed to mail report"
+            ret=$((ret+1))
+            continue
+         fi
+      fi
 
-      # TODO: reporting email
+      # TODO: Tidy up build and report scripts
 
    done
    dbg "Finished processing report queue"
