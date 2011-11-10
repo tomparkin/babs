@@ -295,7 +295,9 @@ pick_runner_machine() {
    local idlemachine=
 
    # Pick a runner based on who has the shortest queue
-   for m in $MACHINE_POOL
+   # We randomise the machine pool order to avoid artificially loading
+   # the first box in the pool
+   for m in $(for i in $MACHINE_POOL; do printf "$RANDOM\t%s\n" $i; done | sort -n | cut -f2-)
    do
       if l=$(get_machine_queue_length "$m")
       then
