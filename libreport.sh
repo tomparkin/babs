@@ -130,24 +130,13 @@ report_get_modules_file_changelog() {
 report_get_my_ip_addresses() { ifconfig | awk '/inet addr/ { split($2,a,/:/); print a[2]; }' | grep -v 127.0.0.1; }
 
 # Generate a report
-# $1 -- workroot
-# $2 -- modules file
-# $3 -- stable tag
-# $4 -- start time
-# $5 -- finish time
-# $6 -- status string (one of REPORT_ERR_*)
-# $7 -- build log file
+# $1 -- status string (one of REPORT_ERR_*)
 report_generate() {
-   test -d "$1" || return 1
-   test -f "$2" || return 1
-   test "x$3" = "x" && return 1
-   test "x$4" = "x" && return 1
-   test "x$5" = "x" && return 1
-   test "x$6" = "x" && return 1
-   test -f "$7" || return 1
+   test "x$1" = "x" && return 1
 
    local ipaddr=$(report_get_my_ip_addresses | tr "\n" "/")
-   local runtime=$(report_seconds_to_time_string $(( $(date -d "$5" +%s) - $(date -d "$4" +%s) )))
+   local finish_time=$(date)
+   local runtime=$(report_seconds_to_time_string $(( $(date -d "$finish_time" +%s) - $(date -d "$AUTOBUILDER_START_TIME" +%s) )))
    local stable_rev=
 
 # Print report header
@@ -161,18 +150,20 @@ cat << _EOF_
 Build:                              $AUTOBUILDER_BUILD_TITLE
 Revision:                           $AUTOBUILDER_REVISION
 Build host:                         ${ipaddr%/}
-Build directory:                    $1
-Build log:                          $7
-Start time:                         $4
-Finish time:                        $5
+Build directory:                    $AUTOBUILDER_WORKROOT
+Build log:                          $AUTOBUILDER_BUILD_LOGFILE
+Start time:                         $AUTOBUILDER_START_TIME
+Finish time:                        $finish_time
 Build runtime:                      $runtime
-Status:                             $6
+Status:                             $1
 
 _EOF_
 
 # If we determined the last stable tag, print the changeset since then
-if stable_rev=$(report_get_modules_file_stable_tag_revision "$2" "$3")
+if test "x$AUTOBUILDER_STABLE_TAG" != "x"
 then
+   if stable_rev=$(report_get_modules_file_stable_tag_revision "$AUTOBUILDER_MODULES_FILE" "$AUTOBUILDER_STABLE_TAG")
+   then
 cat << __EOF__
 ######################################################################
 #
@@ -182,12 +173,13 @@ cat << __EOF__
 
 Last stable rev:                    $stable_rev
 Changeset since last stable rev:
-$(report_get_modules_file_changelog "$2" "$stable_rev" "$AUTOBUILDER_REVISION")
+$(report_get_modules_file_changelog "$AUTOBUILDER_MODULES_FILE" "$stable_rev" "$AUTOBUILDER_REVISION")
 
 __EOF__
+   fi
 fi
 
-if test "$6" = "$REPORT_ERR_BUILD_FAILED"
+if test "$1" = "$REPORT_ERR_BUILD_FAILED"
 then
 cat << _EOF_
 ######################################################################
@@ -197,8 +189,7 @@ cat << _EOF_
 ######################################################################
 
 Build errors:
-$(report_extract_build_errors "$7")
+$(report_extract_build_errors "$AUTOBUILDER_BUILD_LOGFILE")
 _EOF_
 fi
-
 }

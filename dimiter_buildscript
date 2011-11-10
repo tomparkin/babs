@@ -2,29 +2,17 @@
 #
 # Dimiter build
 #
-report() { report_generate "$WORKROOT" "$WORKROOT/Products/B930/reference/dimiter/modules" B930_dimiter_stable "$START_TIME" "$(date)" "$@" "$BUILD_LOG"; }
-
-die() {
-   report "$@"
-   exit 1
-}
-
-export WORKROOT=${AUTOBUILDER_WORKROOT}/dimiter/build-${AUTOBUILDER_REVISION}-$(date +%H-%M-%S_%d.%m.%Y)
+export WORKROOT=${AUTOBUILDER_WORKROOT}
 export NFS_ROOTFS=$WORKROOT/rootfs/nfs
-START_TIME=$(date)
-CHECKOUT_LOG="$WORKROOT/checkout-log.txt"
-BUILD_LOG="$WORKROOT/build-log.txt"
+checkout_path=${AUTOBUILDER_MODULES_FILE%/modules}
+checkout_path=${checkout_path#*Products/}
 
-# Create the build directory
-test -d "$WORKROOT" && die "$REPORT_ERR_WORKROOT_EXISTS"
-mkdir -p "$WORKROOT" || die "$REPORT_ERR_CANNOT_CREATE_WORKROOT"
+# Create the nfs rootfs directory
 mkdir -p "$NFS_ROOTFS" || die "$REPORT_ERR_CANNOT_CREATE_WORKROOT"
 
 # First we want to check out the sandbox
-( cd $WORKROOT && getstable -repository s-and-s -w -r $AUTOBUILDER_REVISION B930/reference/dimiter > $CHECKOUT_LOG 2>&1 ) || die "$REPORT_ERR_CHECKOUT_FAILED"
-
-# Now generate an nfs rootfs directory
+( cd $WORKROOT && getstable -repository s-and-s -w -r $AUTOBUILDER_REVISION ${checkout_path} &> $AUTOBUILDER_CHECKOUT_LOGFILE ) || die "$REPORT_ERR_CHECKOUT_FAILED"
 
 # Now we want to run the build
-( cd $WORKROOT/buildsys/B868-cora && export WORKROOT=$WORKROOT && export NFS_ROOTFS=$NFS_ROOTFS; make testbuild > $BUILD_LOG 2>&1 ) || die "$REPORT_ERR_BUILD_FAILED"
+( cd "$AUTOBUILDER_BUILDSYS_PATH" && export WORKROOT=$WORKROOT && export NFS_ROOTFS=$NFS_ROOTFS; make testbuild &> $AUTOBUILDER_BUILD_LOGFILE ) || die "$REPORT_ERR_BUILD_FAILED"
 report "Build succeeded"

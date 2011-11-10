@@ -32,6 +32,9 @@ declare -a CHECKOUT_METHOD
 declare -a MODULES_FILE_ROOT
 declare -a BRANCH
 declare -a BUILD_SCRIPT
+declare -a BUILD_TARGET
+declare -a BUILDSYS_PATH
+declare -a STABLE_TAG
 declare -a EMAIL
 
 # Load library functions
@@ -92,18 +95,26 @@ parse_configuration() {
       MODULES_FILE_ROOT[$n]=$(ini_get_value $CONFIG_FILE_PATH $i modules_file_root)
       BRANCH[$n]=$(ini_get_value $CONFIG_FILE_PATH $i branch)
       BUILD_SCRIPT[$n]=$(ini_get_value $CONFIG_FILE_PATH $i build_script)
+      BUILD_TARGET[$n]=$(ini_get_value $CONFIG_FILE_PATH $i build_target)
+      BUILDSYS_PATH[$n]=$(ini_get_value $CONFIG_FILE_PATH $i buildsys_path)
+      STABLE_TAG[$n]=$(ini_get_value $CONFIG_FILE_PATH $i stable_tag)
       EMAIL[$n]=$(ini_get_value $CONFIG_FILE_PATH $i email)
 
       # We must have at least this subset of possible values defined
       test "x${CHECKOUT_METHOD[$n]}" = "x" && return 1
       test "x${MODULES_FILE_ROOT[$n]}" = "x" && return 1
       test "x${BUILD_SCRIPT[$n]}" = "x" && return 1
+      test "x${BUILD_TARGET[$n]}" = "x" && return 1
+      test "x${BUILDSYS_PATH[$n]}" = "x" && return 1
 
       dbg "Adding build ${BUILD_TITLE[$n]}:"
       dbg "    checkout method   = ${CHECKOUT_METHOD[$n]}"
       dbg "    modules file root = ${MODULES_FILE_ROOT[$n]}"
       dbg "    branch            = ${BRANCH[$n]}"
       dbg "    build script      = ${BUILD_SCRIPT[$n]}"
+      dbg "    buildsys path     = ${BUILDSYS_PATH[$n]}"
+      dbg "    build target      = ${BUILD_TARGET[$n]}"
+      dbg "    stable tag        = ${STABLE_TAG[$n]}"
       dbg "    email             = ${EMAIL[$n]}"
 
       NUMBER_OF_BUILDS=$((NUMBER_OF_BUILDS+1))
@@ -138,8 +149,6 @@ email_report() {
    echo "To: $2" >> $tmp
    echo "Reply-To: $3" >> $tmp
    echo "Subject: $4" >> $tmp
-   echo >> $tmp
-   echo "Build report follows:" >> $tmp
    echo >> $tmp
    cat "$1" >> $tmp
    echo >> $tmp
@@ -403,13 +412,26 @@ generate_build_script() {
 # from ${BUILD_SCRIPT[$1]} with some variables added by $(basename $0).
 
 # These variables are provided by $(basename $0)
+AUTOBUILDER_BUILD_TITLE=${BUILD_TITLE[$1]}
 AUTOBUILDER_BRANCH_NAME=${BRANCH[$1]}
 AUTOBUILDER_REVISION=$2
-AUTOBUILDER_BUILD_TITLE=${BUILD_TITLE[$1]}
-AUTOBUILDER_WORKROOT=/export/home/autobuild
+AUTOBUILDER_STABLE_TAG=${STABLE_TAG[$1]}
+AUTOBUILDER_BUILD_TARGET=${BUILD_TARGET[$1]}
+AUTOBUILDER_WORKROOT=/export/home/autobuild/${BUILD_TITLE[$1]}/build-${2}-\$(date +%H-%M-%S_%d.%m.%Y)
+AUTOBUILDER_BUILDSYS_PATH=\${AUTOBUILDER_WORKROOT}/${BUILDSYS_PATH[$1]}
+AUTOBUILDER_MODULES_FILE=\${AUTOBUILDER_WORKROOT}/Products/${MODULES_FILE_ROOT[$1]}/modules
+AUTOBUILDER_CHECKOUT_LOGFILE=\${AUTOBUILDER_WORKROOT}/checkout-log.txt
+AUTOBUILDER_BUILD_LOGFILE=\${AUTOBUILDER_WORKROOT}/build-log.txt
+AUTOBUILDER_START_TIME=\$(date)
 
 # These functions are provided by $(basename $0)
 $(grep -v "^#\!" $(dirname $0)/libreport.sh)
+
+die() { report_generate "\$@"; exit 1; }
+
+# Ensure workroot can be created
+test -d "\$AUTOBUILDER_WORKROOT"  && die "\$REPORT_ERR_WORKROOT_EXISTS"
+mkdir -p "\$AUTOBUILDER_WORKROOT" || die "\$REPORT_ERR_CANNOT_CREATE_WORKROOT"
 
 # The rest of this script is pasted from ${BUILD_SCRIPT[$1]}
 $(grep -v "^#\!" ${BUILD_SCRIPT[$1]})
@@ -545,7 +567,7 @@ process_report_queue() {
       # Email job report
       if test -n "$email"
       then
-         if ! email_report "$local_build_report" "$email" "$EMAIL_FROM" "$build_title revision $build_revision : $build_result"
+         if ! email_report "$local_build_report" "$email" "$EMAIL_FROM" "Autobuilder: $build_title revision $build_revision : $build_result"
          then
             err "Failed to mail report"
             ret=$((ret+1))

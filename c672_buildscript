@@ -2,25 +2,16 @@
 #
 # C672 build
 #
-report() { report_generate "$WORKROOT" "$WORKROOT/Products/C672/modules" C672_stable "$START_TIME" "$(date)" "$@" $BUILD_LOG; }
-
-die() {
-   report "$@"
-   exit 1
-}
-
-export WORKROOT=${AUTOBUILDER_WORKROOT}/C672/build-${AUTOBUILDER_REVISION}-$(date +%H-%M-%S_%d.%m.%Y)
-START_TIME=$(date)
-CHECKOUT_LOG="$WORKROOT/checkout-log.txt"
-BUILD_LOG="$WORKROOT/build-log.txt"
-
-# Create the build directory
-test -d "$WORKROOT" && "die $REPORT_ERR_WORKROOT_EXISTS"
-mkdir -p "$WORKROOT" || "die $REPORT_ERR_CANNOT_CREATE_WORKROOT"
+export WORKROOT=${AUTOBUILDER_WORKROOT}
+checkout_path=${AUTOBUILDER_MODULES_FILE%/modules}
+checkout_path=${checkout_path#*Products/}
 
 # First we want to check out the sandbox
-( cd $WORKROOT && getstable -repository s-and-s -w -r $AUTOBUILDER_REVISION C672  > $CHECKOUT_LOG 2>&1 ) || die "$REPORT_ERR_CHECKOUT_FAILED"
+echo ${checkout_path}
+( cd $WORKROOT && getstable -repository s-and-s -w -r $AUTOBUILDER_REVISION ${checkout_path} &> $AUTOBUILDER_CHECKOUT_LOGFILE ) || die "$REPORT_ERR_CHECKOUT_FAILED"
 
 # Now we want to run the build
-( cd $WORKROOT/buildsys/C672 && export WORKROOT=$WORKROOT; make testbuild > $BUILD_LOG 2>&1 ) || die "$REPORT_ERR_BUILD_FAILED"
-report "Build succeeded"
+( cd "$AUTOBUILDER_BUILDSYS_PATH" && export WORKROOT=$WORKROOT; make "$AUTOBUILDER_BUILD_TARGET" &> $AUTOBUILDER_BUILD_LOGFILE ) || die "$REPORT_ERR_BUILD_FAILED"
+
+# Success!
+report_generate "Build succeeded"
