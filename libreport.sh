@@ -152,6 +152,12 @@ report_generate() {
 
 # Print report header
 cat << _EOF_
+######################################################################
+#
+# Build summary
+#
+######################################################################
+
 Build:                              $AUTOBUILDER_BUILD_TITLE
 Revision:                           $AUTOBUILDER_REVISION
 Build host:                         ${ipaddr%/}
@@ -161,21 +167,35 @@ Start time:                         $4
 Finish time:                        $5
 Build runtime:                      $runtime
 Status:                             $6
+
 _EOF_
 
 # If we determined the last stable tag, print the changeset since then
 if stable_rev=$(report_get_modules_file_stable_tag_revision "$2" "$3")
 then
 cat << __EOF__
+######################################################################
+#
+# SCM changelog
+#
+######################################################################
+
 Last stable rev:                    $stable_rev
 Changeset since last stable rev:
 $(report_get_modules_file_changelog "$2" "$stable_rev" "$AUTOBUILDER_REVISION")
+
 __EOF__
 fi
 
 if test "$6" = "$REPORT_ERR_BUILD_FAILED"
 then
 cat << _EOF_
+######################################################################
+#
+# Extracted build errors
+#
+######################################################################
+
 Build errors:
 $(report_extract_build_errors "$7")
 _EOF_
