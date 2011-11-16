@@ -57,3 +57,9 @@ util_find_interface_on_network() {
    done
    return 1
 }
+
+# Check whether the supplied string is blank
+# $1 -- string
+util_string_is_blank() {
+   test "x$(util_trim_string "$1")" = "x"
+}

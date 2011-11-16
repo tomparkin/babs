@@ -242,6 +242,15 @@ test_util_functions() {
    local eth0_ip="$(util_get_ip_for_interface eth0)"
    util_find_interface_on_network $eth0_ip || test_fail "util_find_interface_on_network() with good input"
    util_find_interface_on_network 123.456.789.101 && test_fail "util_find_interface_on_network() with bad input"
+
+   # empty string
+   util_string_is_blank "" || test_fail "util_string_is_blank() with blank string 1"
+   util_string_is_blank "   " || test_fail "util_string_is_blank() with blank string 2"
+   util_string_is_blank || test_fail "util_string_is_blank() with blank string 3"
+   util_string_is_blank "a" && test_fail "util_string_is_blank() with non-blank string 1"
+   util_string_is_blank "a   " && test_fail "util_string_is_blank() with non-blank string 2"
+   util_string_is_blank "   a" && test_fail "util_string_is_blank() with non-blank string 3"
+   util_string_is_blank "   a   " && test_fail "util_string_is_blank() with non-blank string 4"
 }
 
 test_log_functions
