@@ -253,6 +253,49 @@ test_util_functions() {
    util_string_is_blank "   a   " && test_fail "util_string_is_blank() with non-blank string 4"
 }
 
+test_list_functions() {
+   . $(dirname $0)/libutil.sh || test_fail "libutil load"
+   . $(dirname $0)/libqueue.sh || test_fail "libqueue load"
+   . $(dirname $0)/liblist.sh || test_fail "liblist load"
+
+   # Fuzz
+   list_add_entry && test_fail "list_add_entry() with null args"
+   list_remove_entry && test_fail "list_remove_entry() with null args"
+   list_lookup_by_parameter && test_fail "list_lookup_by_parameter() with null args"
+   list_parameter_parse && test_fail "list_parameter_parse() with null args"
+
+   local l=/tmp/$(basename $0)-$$-list.txt
+   list_add_entry "$l" 5 "one" "two" "three" "four" && test_fail "list_add_entry() with too few args"
+   list_add_entry "$l" 5 "one" "two" "three" "four" "five" "six" && test_fail "list_add_entry() with too many args"
+   list_add_entry "$l" 5 "one" "two" "three" "four" "five" || test_fail "list_add_entry() with correct args 1"
+
+   local id=$(list_add_entry "$l" 3 "one" "for" "all") || test_fail "list_add_entry() with correct args 2"
+   list_remove_entry "$l" "abceded" && test_fail "list_remove_entry() with invalid id"
+   list_remove_entry "$l" "$id" || test_fail "list_remove_entry() with valid id"
+   grep "one.*for.*all" $l && test_fail "list_remove_entry() failed to remove text"
+
+   id=$(list_add_entry "$l" 3 "siamang" "lemur" "orangutang") || test_fail "list_add_entry() with correct args 3"
+   list_add_entry "$l" 5 "fff" "munge" "util" "huhuh" "zig" || test_fail "list_add_entry() with correct args 4"
+   list_add_entry "$l" 2 "supercalifragilistic" "expialidocious" || test_fail "list_add_entry() with correct args 5"
+   list_add_entry "$l" 1 "notmuchofanargumentfrankly" || test_fail "list_add_entry() with correct args 6"
+
+   test "$id" = "$(list_lookup_by_parameter "$l" 1 "siamang")" || test_fail "list_lookup_by_parameter() correct args 1"
+   test "$id" = "$(list_lookup_by_parameter "$l" 2 "lemur")" || test_fail "list_lookup_by_parameter() correct args 1"
+   test "$id" = "$(list_lookup_by_parameter "$l" 3 "orangutang")" || test_fail "list_lookup_by_parameter() correct args 1"
+   test "$id" = "$(list_lookup_by_parameter "$l" 2 "siamang")" && test_fail "list_lookup_by_parameter() incorrect args 1"
+   test "$id" = "$(list_lookup_by_parameter "$l" 3 "lemur")" && test_fail "list_lookup_by_parameter() incorrect args 1"
+   test "$id" = "$(list_lookup_by_parameter "$l" 1 "orangutang")" && test_fail "list_lookup_by_parameter() incorrect args 1"
+
+   test "siamang" = "$(list_parameter_parse "$l" "$id" 1)" || test_fail "list_parameter_parse() correct args 1"
+   test "lemur" = "$(list_parameter_parse "$l" "$id" 2)" || test_fail "list_parameter_parse() correct args 2"
+   test "orangutang" = "$(list_parameter_parse "$l" "$id" 3)" || test_fail "list_parameter_parse() correct args 3"
+   test "siamang" = "$(list_parameter_parse "$l" "$id" 3)" && test_fail "list_parameter_parse() incorrect args 1"
+   test "lemur" = "$(list_parameter_parse "$l" "$id" 1)" && test_fail "list_parameter_parse() incorrect args 2"
+   test "orangutang" = "$(list_parameter_parse "$l" "$id" 2)" && test_fail "list_parameter_parse() incorrect args 3"
+
+   rm -f $l
+}
+
 test_log_functions
 test_util_functions
 test_job_functions
@@ -260,5 +303,6 @@ test_queue_functions
 test_pmrpc_functions
 test_ini_functions
 test_event_functions
+test_list_functions
 
 echo "Success :-)"
