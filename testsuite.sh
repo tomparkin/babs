@@ -9,6 +9,12 @@ test_fail() {
    exit 1
 }
 
+run_testsuite() {
+   echo "### RUNNING $1"
+   $1 | sed 's=^=   =g'
+   echo "### $1 COMPLETED"
+}
+
 # Logging
 test_log_functions() {
    . $(dirname $0)/liblog.sh || test_fail "liblog load"
@@ -86,12 +92,12 @@ test_queue_functions() {
       queue_add $qf "$i" || test_fail "queue_add() $i"
    done
    test $(queue_length $qf) -eq 10 || test_fail "queue_length() 10 incorrect"
-   
+
    # Popping
    test $(queue_pop_youngest $qf) -eq 10 || test_fail "queue_pop_youngest() 10 incorrect"
    test $(queue_pop_eldest $qf) -eq 1 || test_fail "queue_pop_eldest() 1 incorrect"
    test $(queue_length $qf) -eq 8 || test_fail "queue_length() 8 incorrect"
-   
+
    # Dump
    queue_dump $qf | grep "empty" && test_fail "queue_dump() for filled queue"
 
@@ -152,7 +158,7 @@ legcount =3 # it is a three leg dog
 #color=olive
 #legcount=2
 __EOF__
-  
+
    # get_section_list
    ini_get_section_list $if || test_fail "ini_get_section_list() with populated file"
    ini_get_section_list $if | grep global || test_fail "ini_get_section_list() global section"
@@ -297,6 +303,75 @@ test_list_functions() {
    rm -f $l
 }
 
+test_autobuilder_functions() {
+   . $(dirname $0)/libutil.sh || test_fail "libutil load"
+   . $(dirname $0)/libqueue.sh || test_fail "libqueue load"
+   . $(dirname $0)/liblist.sh || test_fail "liblist load"
+   . $(dirname $0)/libautobuilder.sh || test_fail "libautobuilder load"
+
+   local queue=/tmp/$(basename $0)-$$-queue.txt
+
+   # Fuzz
+   autobuilder_enqueue_build && test_fail "autobuilder_enqueue_build() fuzz"
+   autobuilder_dequeue_build && test_fail "autobuilder_dequeue_build() fuzz"
+   autobuilder_enqueue_report && test_fail "autobuilder_enqueue_report() fuzz"
+   autobuilder_dequeue_report && test_fail "autobuilder_dequeue_report() fuzz"
+
+   # enqueue build
+   autobuilder_enqueue_build "$queue" "5" "1.55.6.2" || test_fail "autobuilder_enqueue_build() good arguments 1"
+   local tmp=$(autobuilder_enqueue_build "$queue" "2" "516892") || test_fail "autobuilder_enqueue_build() good arguments 2"
+   util_string_is_blank "$tmp" || test_fail "autobuilder_enqueue_build() isn't quiet"
+   test $(queue_length "$queue") -eq 2 || test_fail "queue_length() check 1"
+   autobuilder_enqueue_build "$queue" "5" && test_fail "autobuilder_enqueue_build() bad arguments 1"
+   autobuilder_enqueue_build "$queue" "5" "   " && test_fail "autobuilder_enqueue_build() bad arguments 2"
+   autobuilder_enqueue_build "$queue" "5 251225" && test_fail "autobuilder_enqueue_build() bad arguments 3"
+
+   # dequeue build
+   local build_id=
+   local build_rev=
+   autobuilder_dequeue_build "$queue" || test_fail "autobuilder_dequeue_build() with good arguments 1"
+   test "$build_id" = "5" || test_fail "autobuilder_dequeue_build() check return 1"
+   test "$build_rev" = "1.55.6.2" || test_fail "autobuilder_dequeue_build() check return 2"
+   test $(queue_length "$queue") -eq 1 || test_fail "queue_length() check 2"
+   autobuilder_dequeue_build "$queue" || test_fail "autobuilder_dequeue_build() with good arguments 2"
+   test "$build_id" = "2" || test_fail "autobuilder_dequeue_build() check return 3"
+   test "$build_rev" = "516892" || test_fail "autobuilder_dequeue_build() check return 4"
+   test $(queue_length "$queue") -eq 0 || test_fail "queue_length() check 3"
+
+   # enqueue report
+   autobuilder_enqueue_report "$queue" "Foobar_trunk_testbuild" "412032" "10.0.0.2" "SUCCESS" "/opt/report/rep.txt" || test_fail "autobuilder_enqueue_report() with good arguments 1"
+   autobuilder_enqueue_report "$queue" "Fizzbuzz_M5_releasebuild" "1.920.5.56" "10.0.0.9" "FAILURE" "/var/log/rep.txt" || test_fail "autobuilder_enqueue_report() with good arguments 2"
+   test $(queue_length "$queue") -eq 2 || test_fail "queue_length() check 1"
+   autobuilder_enqueue_report "$queue" "Fizzbuzz_M5_releasebuild" "" "10.0.0.9" "" "/var/log/rep.txt" && test_fail "autobuilder_enqueue_report() with bad arguments 1"
+   autobuilder_enqueue_report "$queue" && test_fail "autobuilder_enqueue_report() with bad arguments 2"
+   autobuilder_enqueue_report "$queue" "    " "1.920.5.56" "10.0.0.9" "FAILURE" "  " && test_fail "autobuilder_enqueue_report() with bad arguments 3"
+
+   # dequeue report
+   local build_title=
+   local build_rev=
+   local build_runner_ip=
+   local build_result=
+   local build_report_path=
+
+   autobuilder_dequeue_report "$queue" || test_fail "autobuilder_dequeue_report() with good arguments 1"
+   test "$build_title" = "Foobar_trunk_testbuild" || test_fail "autobuilder_dequeue_report() check return 1"
+   test "$build_rev" = "412032" || test_fail "autobuilder_dequeue_report() check return 2"
+   test "$build_runner_ip" = "10.0.0.2" || test_fail "autobuilder_dequeue_report() check return 3"
+   test "$build_result" = "SUCCESS" || test_fail "autobuilder_dequeue_report() check return 4"
+   test "$build_report_path" = "/opt/report/rep.txt" || test_fail "autobuilder_dequeue_report() check return 5"
+   test $(queue_length "$queue") -eq 1 || test_fail "queue_length() check 2"
+
+   autobuilder_dequeue_report "$queue" || test_fail "autobuilder_dequeue_report() with good arguments 2"
+   test "$build_title" = "Fizzbuzz_M5_releasebuild" || test_fail "autobuilder_dequeue_report() check return 6"
+   test "$build_rev" = "1.920.5.56" || test_fail "autobuilder_dequeue_report() check return 7"
+   test "$build_runner_ip" = "10.0.0.9" || test_fail "autobuilder_dequeue_report() check return 8"
+   test "$build_result" = "FAILURE" || test_fail "autobuilder_dequeue_report() check return 9"
+   test "$build_report_path" = "/var/log/rep.txt" || test_fail "autobuilder_dequeue_report() check return 10"
+   test $(queue_length "$queue") -eq 0 || test_fail "queue_length() check 3"
+
+   rm -f "$queue"
+}
+
 test_log_functions
 test_util_functions
 test_job_functions
@@ -305,5 +380,6 @@ test_pmrpc_functions
 test_ini_functions
 test_event_functions
 test_list_functions
+test_autobuilder_functions
 
 echo "Success :-)"
