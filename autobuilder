@@ -171,45 +171,6 @@ set_last_build_revision() {
    echo "$1 = $2" >> ${LAST_BUILT_LOG}.new && mv ${LAST_BUILT_LOG}.new ${LAST_BUILT_LOG}
 }
 
-# $1 -- build name
-# $2 -- build revision
-# $3 -- runner
-build_info_to_inflight() { echo "$(date +%H:%M:%S-%d/%m/%Y) $1 $2 runner $3"; }
-
-# $1 -- inflight log line
-inflight_to_build_name() { echo "$1" | cut -d" " -f2; }
-
-# $1 -- inflight log line
-inflight_to_build_rev() { echo "$1" | cut -d" " -f3; }
-
-# $1 -- inflight log line
-inflight_to_build_runner() { echo "$1" | cut -d" " -f5; }
-
-# $1 -- build name
-# $2 -- build revision
-# $3 -- runner
-add_build_to_inflight_list() { build_info_to_inflight $1 $2 $3 >> $IN_FLIGHT_LOG; }
-
-# $1 -- build name
-# $2 -- build revision
-remove_build_from_inflight_list() {
-   if test -f "$IN_FLIGHT_LOG"
-   then
-      grep -v "$1.*$2" "$IN_FLIGHT_LOG" > ${IN_FLIGHT_LOG}.new
-      mv ${IN_FLIGHT_LOG}.new ${IN_FLIGHT_LOG}
-   fi
-}
-
-# $1 -- build revision
-lookup_inflight_build_by_revision() {
-   local l=
-   test "x$1" = "x" && return 1
-   if test -f "$IN_FLIGHT_LOG"
-   then
-      awk -v rev=$1 '$3 == rev { print }' "$IN_FLIGHT_LOG"
-   fi
-}
-
 # $1 -- modules file path
 # $2 -- branch name (optional)
 cvs_get_build_rev() {
@@ -462,7 +423,7 @@ process_build_queue() {
       then
          logts "${BUILD_TITLE[$build_id]} revision $build_rev to be processed by runner $runner"
          set_last_build_revision "${BUILD_TITLE[$build_id]}" "$build_rev"
-         add_build_to_inflight_list "${BUILD_TITLE[$build_id]}" "$build_rev" "$runner"
+         autobuilder_add_inflight_build "$IN_FLIGHT_LOG" "${BUILD_TITLE[$build_id]}" "$build_rev" "$runner"
       else
          err "Failed to push ${BUILD_TITLE[$build_id]} revision $build_rev build to runner $runner"
          ret=$((ret+1))
@@ -480,7 +441,6 @@ process_report_queue() {
    local build_runner_ip=
    local build_result=
    local build_report_path=
-   local inflight=
    local email=
    local n=
    local local_build_report_path=
@@ -493,7 +453,7 @@ process_report_queue() {
       logts "Runner $build_runner_ip reported $build_result for $build_title revision $build_rev"
 
       # Find this build in our "in flight" build list
-      if ! inflight=$(lookup_inflight_build_by_revision "$build_rev")
+      if ! autobuilder_rem_inflight_build "$build_rev"
       then
          err "Couldn't locate build on inflight list -- reports will be dropped :-("
          ret=$((ret+1))
@@ -507,14 +467,6 @@ process_report_queue() {
       done
 
       email=$(util_trim_string ${EMAIL[$n]})
-
-      # Remove from the inflight list
-      if ! remove_build_from_inflight_list "$build_title" "$build_rev"
-      then
-         err "Failed to remove build from inflight list"
-         ret=$((ret+1))
-         continue
-      fi
 
       # Obtain report from jobrunner
       local_build_report_path=$REPORT_STORE/${build_title}_${build_rev}_report.txt
