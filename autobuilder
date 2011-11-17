@@ -474,37 +474,26 @@ process_build_queue() {
 }
 
 process_report_queue() {
-   local report=
    local ret=0
    local build_title=
-   local build_revision=
-   local build_runner=
+   local build_rev=
+   local build_runner_ip=
    local build_result=
-   local build_report=
+   local build_report_path=
    local inflight=
    local email=
    local n=
-   local local_build_report=
+   local local_build_report_path=
 
    while true
    do
-      queue_lock "$REPORT_QUEUE"
-      report="$(queue_pop_eldest "$REPORT_QUEUE")"
-      queue_unlock "$REPORT_QUEUE"
+      # Emtpy queue means we've nothing more to process
+      autobuilder_dequeue_report "$REPORT_QUEUE" || break
 
-      # Empty result means the queue is empty
-      test "x$report" = "x" && break
-
-      build_title=$(reportstring_to_build_title "$report")
-      build_revision=$(reportstring_to_revision "$report")
-      build_runner=$(reportstring_to_runner_ip "$report")
-      build_result=$(reportstring_to_result "$report")
-      build_report=$(reportstring_to_report_path "$report")
-
-      logts "Runner $build_runner reported $build_result for $build_title revision $build_revision"
+      logts "Runner $build_runner_ip reported $build_result for $build_title revision $build_rev"
 
       # Find this build in our "in flight" build list
-      if ! inflight=$(lookup_inflight_build_by_revision "$build_revision")
+      if ! inflight=$(lookup_inflight_build_by_revision "$build_rev")
       then
          err "Couldn't locate build on inflight list -- reports will be dropped :-("
          ret=$((ret+1))
@@ -520,7 +509,7 @@ process_report_queue() {
       email=$(util_trim_string ${EMAIL[$n]})
 
       # Remove from the inflight list
-      if ! remove_build_from_inflight_list "$build_title" "$build_revision"
+      if ! remove_build_from_inflight_list "$build_title" "$build_rev"
       then
          err "Failed to remove build from inflight list"
          ret=$((ret+1))
@@ -528,8 +517,8 @@ process_report_queue() {
       fi
 
       # Obtain report from jobrunner
-      local_build_report=$REPORT_STORE/${build_title}_${build_revision}_report.txt
-      if ! scp $build_runner:$build_report $local_build_report > /dev/null
+      local_build_report_path=$REPORT_STORE/${build_title}_${build_rev}_report.txt
+      if ! scp $build_runner_ip:$build_report_path $local_build_report_path > /dev/null
       then
          err "Failed to copy build report from the runner"
          ret=$((ret+1))
@@ -539,7 +528,7 @@ process_report_queue() {
       # Email job report
       if test -n "$email"
       then
-         if ! email_report "$local_build_report" "$email" "$EMAIL_FROM" "Autobuilder: $build_title revision $build_revision : $build_result"
+         if ! email_report "$local_build_report_path" "$email" "$EMAIL_FROM" "Autobuilder: $build_title revision $build_rev : $build_result"
          then
             err "Failed to mail report"
             ret=$((ret+1))
@@ -554,87 +543,26 @@ process_report_queue() {
    return $ret
 }
 
-# $1 -- build title
-# $2 -- revision
-# $3 -- runner ip
-# $4 -- result
-# $5 -- report path
-report_to_queuestring() {
-   test "x${1}" = "x" && return 1
-   test "x${2}" = "x" && return 1
-   test "x${3}" = "x" && return 1
-   test "x${4}" = "x" && return 1
-   test "x${5}" = "x" && return 1
-
-   if test "${4}" != "SUCCESS" && test "${4}" != "FAILURE"
-   then
-      return 1
-   fi
-
-   util_check_abspath_string "$5" || return 1
-   util_check_dotted_quad "$3" || return 1
-
-   echo "${1}@${2}@${3}@${4}@${5}"
-}
-
-# $1 -- report string
-reportstring_to_build_title() {
-   test "x${1}" = "x" && return 1
-   echo "${1}" | cut -d"@" -f1
-}
-
-# $1 -- report string
-reportstring_to_revision() {
-   test "x${1}" = "x" && return 1
-   echo "${1}" | cut -d"@" -f2
-}
-
-# $1 -- report string
-reportstring_to_runner_ip() {
-   local s=
-   test "x${1}" = "x" && return 1
-   s=$(echo "${1}" | cut -d"@" -f3)
-   util_check_dotted_quad "$s" && echo "$s"
-}
-
-# $1 -- report string
-reportstring_to_result() {
-   local s=
-   test "x${1}" = "x" && return 1
-   s=$(echo "${1}" | cut -d"@" -f4)
-   if test "${s}" = "SUCCESS" || test "${s}" = "FAILURE"
-   then
-      echo $s
-   fi
-}
-
-# $1 -- report string
-reportstring_to_report_path() {
-   local s=
-   test "x${1}" = "x" && return 1
-   s=$(echo "${1}" | cut -d"@" -f5)
-   util_check_abspath_string "$s" && echo "$s"
-}
-
 # Add a build result to the reporting queue
 report_result() {
    local s=
 
-   if ! s=$(report_to_queuestring "$1" "$2" "$3" "$4" "$5")
+   # Sanity check
+   if ! util_check_abspath_string "$5"
    then
-      err "Failed to convert inputs to a report string"
+      err "Invalid report path string: $5"
+      return 1
+   elif ! util_check_dotted_quad "$3"
+      err "Invalid runner ip address: $3"
       return 1
    fi
 
-   # Add the report to the report queue
-   queue_lock "$REPORT_QUEUE"
-   if ! queue_add "$REPORT_QUEUE" "$s"
+   # Add report into the queue
+   if ! autobuilder_enqueue_report "$REPORT_QUEUE" "$1" "$2" "$3" "$4" "$5"
    then
       err "Failed to add report into report queue"
-      queue_unlock "$REPORT_QUEUE"
       return 1
    fi
-   queue_unlock "$REPORT_QUEUE"
 
    # Generate a report ready event for the master
    event_write "$EVENT_QUEUE" "$EVENT_ID_BUILD_REPORT_READY"
