@@ -164,7 +164,7 @@ autobuilder_rem_inflight_build() {
 # $3 -- build title
 # $4 -- build revision
 # $5 -- build runner ip
-# $6 -- build report path
+# $6 -- build path
 # $7 -- build result
 # $8 -- build runtime
 autobuilder_add_build_to_history() {
