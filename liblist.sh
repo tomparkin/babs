@@ -98,7 +98,10 @@ list_remove_entry() {
 
    if grep -q "$2" "$1"
    then
-      queue_lock "$1" && grep -v "$2" "$1" > ${1}.new && mv ${1}.new ${1} && queue_unlock "$1"
+      queue_lock "$1"
+      grep -v "$2" "$1" > ${1}.new
+      mv ${1}.new ${1}
+      queue_unlock "$1"
    else
       # Entry not present
       return 2
