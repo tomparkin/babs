@@ -443,6 +443,7 @@ process_report_queue() {
    local build_runner_ip=
    local build_result=
    local build_report_path=
+   local build_date=
    local email=
    local n=
    local local_build_report_path=
@@ -494,6 +495,16 @@ process_report_queue() {
       # FIXME: don't guess about the script names...
       rm -f ${WORKDIR}/$(basename $0)-${build_title}-${build_rev}-${build_runner_ip}*REPORT.sh
       rm -f ${WORKDIR}/$(basename $0)-${build_title}-${build_rev}-${build_runner_ip}*BUILD.sh
+
+      # Place the build in the history log
+      local bruntime=$(( $(date +%s) - $(date -d "$build_date" +%s) ))
+
+      if ! autobuilder_add_build_to_history "$BUILD_HISTORY" "$(date)" "$build_title" "$build_rev" "$build_runner_ip"  "$local_build_report_path" "$build_result" "$bruntime"
+      then
+         err "Failed to store build in the history log, history will be inaccurate"
+         ret=$((ret+1))
+         continue
+      fi
 
    done
    dbg "Finished processing report queue"
