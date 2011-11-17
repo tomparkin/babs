@@ -157,5 +157,39 @@ autobuilder_rem_inflight_build() {
    return 0
 }
 
-# Last built list.  The last built list stores information about the
-# most recently build revision of each build under autobuilder control.
+# Build history list
+
+# $1 -- build history file
+# $2 -- build timestamp
+# $3 -- build title
+# $4 -- build revision
+# $5 -- build runner ip
+# $6 -- build report path
+# $7 -- build result
+# $8 -- build runtime
+autobuilder_add_build_to_history() {
+   list_add_entry "$1" 8 "$2" "$3" "$4" "$5" "$6" "$7" "$8" > /dev/null
+}
+
+# $1 -- build history file
+# $2 -- build title
+# On successful return, sets:
+#     build_time
+#     build_date
+#     build_title
+#     build_rev
+#     build_runner_ip
+#     build_path
+#     build_result
+#     build_runtime
+autobuild_lookup_build_in_history() {
+   local entry=
+   local btim=
+   local bdat=
+   local btit=
+   local brev=
+   local brip=
+   local bpat=
+   local bres=
+   local brti=
+}
