@@ -574,6 +574,33 @@ request_revision_scan() {
    event_write "$EVENT_QUEUE" "$EVENT_ID_PROCESS_BUILD_QUEUE"
 }
 
+# Print information about the autobuilder machine pool
+request_machine_pool_info() {
+   local ip=
+
+   for ip in ${MACHINE_POOL}
+   do
+      local cores=$(pmrpc_run_command $REMOTE_USER $ip "grep ^processor /proc/cpuinfo  | wc -l")
+      local cpu=$(pmrpc_run_command $REMOTE_USER $ip "grep -m1 \"model name\" /proc/cpuinfo | cut -d: -f2")
+      local mem=$(pmrpc_run_command $REMOTE_USER $ip "grep ^MemTotal /proc/meminfo")
+
+      cpu=$(util_trim_string "$cpu")
+      mem=${mem#*: }
+      mem=${mem% kB*}
+      mem=$(echo "2 k $mem 1048576 / p" | dc)
+
+      log "Build pool machine $ip ($(util_trim_string "$(pmrpc_run_command $REMOTE_USER $ip "uptime")"))"
+      log "  Queue  : $(get_machine_queue_length $ip) builds queued"
+      log "  CPU    :" ${cpu}
+      log "  Cores  : ${cores}"
+      log "  Memory : ${mem} GB"
+      log "  Disk   :"
+      pmrpc_run_command $REMOTE_USER $ip "df -h"
+      log ""
+
+   done
+}
+
 #
 # Entry point
 #
@@ -607,6 +634,7 @@ case $1 in
    report) shift; report_result $@ ;;
 
    # Commands that a human might call
+   poolinfo) request_machine_pool_info ;;
    scan) request_revision_scan ;;
    requestbuild) shift; request_build "$@" ;;
    run)
