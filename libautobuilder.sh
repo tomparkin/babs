@@ -168,7 +168,7 @@ autobuilder_rem_inflight_build() {
 # $7 -- build result
 # $8 -- build runtime
 autobuilder_add_build_to_history() {
-   list_add_entry "$1" 8 "$2" "$3" "$4" "$5" "$6" "$7" "$8" > /dev/null
+   list_add_entry "$1" 7 "$2" "$3" "$4" "$5" "$6" "$7" "$8" > /dev/null
 }
 
 # $1 -- build history file
