@@ -11,7 +11,7 @@ checkout_path=${checkout_path#*Products/}
 mkdir -p "$NFS_ROOTFS" || die "$REPORT_ERR_CANNOT_CREATE_WORKROOT"
 
 # First we want to check out the sandbox
-( cd $WORKROOT && getstable -repository s-and-s -w -r $AUTOBUILDER_REVISION ${checkout_path} &> $AUTOBUILDER_CHECKOUT_LOGFILE ) || die "$REPORT_ERR_CHECKOUT_FAILED"
+( cd $WORKROOT && /home/salts-cvsbin/getstable -repository s-and-s -w -r $AUTOBUILDER_REVISION ${checkout_path} &> $AUTOBUILDER_CHECKOUT_LOGFILE ) || die "$REPORT_ERR_CHECKOUT_FAILED"
 
 # Now we want to run the build
 ( cd "$AUTOBUILDER_BUILDSYS_PATH" && export WORKROOT=$WORKROOT && export NFS_ROOTFS=$NFS_ROOTFS; make testbuild &> $AUTOBUILDER_BUILD_LOGFILE ) || die "$REPORT_ERR_BUILD_FAILED"

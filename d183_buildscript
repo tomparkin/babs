@@ -7,7 +7,7 @@ checkout_path=${AUTOBUILDER_MODULES_FILE%/modules}
 checkout_path=${checkout_path#*Products/}
 
 # First we want to check out the sandbox
-( cd $WORKROOT && getstable -w -r $AUTOBUILDER_REVISION ${checkout_path}  > $AUTOBUILDER_CHECKOUT_LOGFILE 2>&1 ) || die "$REPORT_ERR_CHECKOUT_FAILED"
+( cd $WORKROOT && /home/salts-cvsbin/getstable -w -r $AUTOBUILDER_REVISION ${checkout_path}  > $AUTOBUILDER_CHECKOUT_LOGFILE 2>&1 ) || die "$REPORT_ERR_CHECKOUT_FAILED"
 
 # Now we want to run the build
 ( cd "$AUTOBUILDER_BUILDSYS_PATH" && export WORKROOT=$WORKROOT; make "$AUTOBUILDER_BUILD_TARGET" > $AUTOBUILDER_BUILD_LOGFILE 2>&1 ) || die "$REPORT_ERR_BUILD_FAILED"
