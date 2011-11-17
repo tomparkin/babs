@@ -9,6 +9,8 @@ readonly REPORT_ERR_CANNOT_CREATE_WORKROOT="Failed to create WORKROOT directory"
 readonly REPORT_ERR_CHECKOUT_FAILED="Checkout from SCM failed"
 readonly REPORT_ERR_BUILD_FAILED="Product build failed"
 
+readonly SVNURL="/home/salts-cvsbin/svnurl"
+
 # $1 -- modules file path
 __modules_file_is_svn() {
    test -f "$1" || return 1
@@ -89,7 +91,7 @@ report_get_modules_file_stable_tag_revision() {
    then
       (
          cd $(dirname $1)
-         local url=$(svnurl)
+         local url=$($SVNURL)
          url=${url%/*}/tags/$2
          if svn info ${url}/$(basename $1) &> /dev/null
          then
