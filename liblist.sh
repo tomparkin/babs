@@ -75,6 +75,7 @@ list_add_entry() {
    # Assemble entry
    e="$id"
    for ((i=1;i<=$np;i++)); do
+      util_string_is_blank "$1" && return 1
       e="$e@$1"
       shift
    done

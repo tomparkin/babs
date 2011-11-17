@@ -267,6 +267,7 @@ test_list_functions() {
    local l=/tmp/$(basename $0)-$$-list.txt
    list_add_entry "$l" 5 "one" "two" "three" "four" && test_fail "list_add_entry() with too few args"
    list_add_entry "$l" 5 "one" "two" "three" "four" "five" "six" && test_fail "list_add_entry() with too many args"
+   list_add_entry "$l" 5 "one" "two" "three" "four" "" && test_fail "list_add_entry() with blank args"
    list_add_entry "$l" 5 "one" "two" "three" "four" "five" || test_fail "list_add_entry() with correct args 1"
 
    local id=$(list_add_entry "$l" 3 "one" "for" "all") || test_fail "list_add_entry() with correct args 2"
