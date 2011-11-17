@@ -18,6 +18,7 @@ EVENT_QUEUE="$(basename $0)-eventqueue.txt"
 BUILD_QUEUE="$(basename $0)-buildqueue.txt"
 REPORT_QUEUE="$(basename $0)-reportqueue.txt"
 REPORT_STORE="reportstore"
+BUILD_HISTORY="$(basename $0)-build-history.txt"
 
 # Read in from the configuration file
 MACHINE_POOL=
@@ -454,7 +455,7 @@ process_report_queue() {
       logts "Runner $build_runner_ip reported $build_result for $build_title revision $build_rev"
 
       # Find this build in our "in flight" build list
-      if ! autobuilder_rem_inflight_build "$build_rev"
+      if ! autobuilder_rem_inflight_build "$IN_FLIGHT_LOG" "$build_rev"
       then
          err "Couldn't locate build on inflight list -- reports will be dropped :-("
          ret=$((ret+1))
@@ -489,7 +490,10 @@ process_report_queue() {
          fi
       fi
 
-      # TODO: Tidy up build and report scripts
+      # Tidy up build/report scripts
+      # FIXME: don't guess about the script names...
+      rm -f ${WORKDIR}/$(basename $0)-${build_title}-${build_rev}-${build_runner_ip}*REPORT.sh
+      rm -f ${WORKDIR}/$(basename $0)-${build_title}-${build_rev}-${build_runner_ip}*BUILD.sh
 
    done
    dbg "Finished processing report queue"
@@ -561,6 +565,7 @@ IN_FLIGHT_LOG="${WORKDIR}/${IN_FLIGHT_LOG}"
 EVENT_QUEUE="${WORKDIR}/${EVENT_QUEUE}"
 BUILD_QUEUE="${WORKDIR}/${BUILD_QUEUE}"
 REPORT_QUEUE="${WORKDIR}/${REPORT_QUEUE}"
+BUILD_HISTORY="${WORKDIR}/${BUILD_HISTORY}"
 
 case $1 in
    scan) request_revision_scan ;;
