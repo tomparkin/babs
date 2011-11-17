@@ -318,6 +318,7 @@ test_autobuilder_functions() {
    autobuilder_dequeue_report && test_fail "autobuilder_dequeue_report() fuzz"
    autobuilder_add_inflight_build && test_fail "autobuilder_add_inflight_build() fuzz"
    autobuilder_rem_inflight_build && test_fail "autobuilder_rem_inflight_build() fuzz"
+   autobuilder_add_build_to_history && test_fail "autobuilder_add_build_to_history() fuzz"
 
    # enqueue build
    autobuilder_enqueue_build "$queue" "5" "1.55.6.2" || test_fail "autobuilder_enqueue_build() good arguments 1"
@@ -395,6 +396,9 @@ test_autobuilder_functions() {
    test "$build_rev" = "456789" || test_fail "autobuilder_rem_inflight_build() check return 5"
    test "$build_runner_ip" = "10.0.1.42" || test_fail "autobuilder_rem_inflight_build() check return 6"
    test $(queue_length "$queue") -eq 0 || test_fail "queue_length() check 10"
+
+   # history
+   autobuilder_add_build_to_history "$queue" "$(date)" "Foobar_2001" "123456" "10.0.1.42" "/export/home/autobuild/foo" "SUCCESS" "123" || test_fail "autobuilder_add_build_to_history() with good arguments 1"
 
    rm -f "$queue"
 }
