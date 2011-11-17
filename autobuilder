@@ -617,8 +617,10 @@ request_machine_pool_info() {
 
 # Print build history
 request_history() {
+   local buildtitle="$1"
    local line=
    local fmt="%-30s %-35s %-10s %-10s %-10s\n"
+   local do_print=0
 
    printf "$fmt" "Date" "Build" "Revision" "Build time" "Result"
 
@@ -631,7 +633,15 @@ request_history() {
       local rev="$(_get_param_from_line "$line" 3)"
       local res="$(_get_param_from_line "$line" 6)"
       local bt="$(_get_param_from_line "$line" 7)"
-      printf "$fmt" "$d" "$t" "$rev" "$bt" "$res"
+
+      if util_string_is_blank "$buildtitle"
+      then
+         do_print=1
+      else
+         test "$buildtitle" = "$t" && do_print=1 || do_print=0
+      fi
+
+      test $do_print -eq 1 && printf "$fmt" "$d" "$t" "$rev" "$bt" "$res"
    done < $BUILD_HISTORY
    queue_unlock "$BUILD_HISTORY"
 }
@@ -669,7 +679,7 @@ case $1 in
    report) shift; report_result $@ ;;
 
    # Commands that a human might call
-   history) request_history ;;
+   history) shift; request_history $@ ;;
    poolinfo) request_machine_pool_info ;;
    scan) request_revision_scan ;;
    requestbuild) shift; request_build "$@" ;;
