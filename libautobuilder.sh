@@ -116,3 +116,38 @@ autobuilder_dequeue_report() {
    build_report_path="$brep"
    return 0
 }
+
+# Inflight list.  The inflight list stores information about the
+# details of builds currently being processed by jobrunners.
+
+# $1 -- inflight list file
+# $2 -- build title
+# $3 -- build revision
+# $4 -- build runner ip
+autobuilder_add_inflight_build() {
+   list_add_entry "$1" 3 "$2" "$3" "$4" > /dev/null
+}
+
+# $1 -- inflight list file
+# $2 -- build revision
+# On successful return, sets:
+#     build_title
+#     build_rev
+#     build_runner_ip
+autobuilder_rem_inflight_build() {
+   local entry=
+   local btit=
+   local brev=
+   local brip=
+
+   entry=$(list_lookup_by_parameter "$1" 2 "$2") || return 1
+   btit=$(list_parameter_parse "$1" "$entry" 1) || return 1
+   brev=$(list_parameter_parse "$1" "$entry" 2) || return 1
+   brip=$(list_parameter_parse "$1" "$entry" 3) || return 1
+   list_remove_entry "$1" "$entry" || return 1
+
+   build_title="$btit"
+   build_rev="$brev"
+   build_runner_ip="$brip"
+   return 0
+}
