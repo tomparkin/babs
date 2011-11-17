@@ -505,6 +505,7 @@ report_result() {
       err "Invalid report path string: $5"
       return 1
    elif ! util_check_dotted_quad "$3"
+   then
       err "Invalid runner ip address: $3"
       return 1
    fi
