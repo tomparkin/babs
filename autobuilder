@@ -44,6 +44,7 @@ declare -a EMAIL
 . $(dirname $0)/libpmrpc.sh
 . $(dirname $0)/libqueue.sh
 . $(dirname $0)/libevent.sh
+. $(dirname $0)/libautobuilder.sh
 
 show_usage() {
    cat << __EOF__
@@ -346,37 +347,14 @@ do_tree_scan() {
       fi
 
       # Add the build to the queue for processing
-      if enqueue_build "$i" "$current_revision"
+      #if enqueue_build "$i" "$current_revision"
+      if autobuilder_enqueue_build "$BUILD_QUEUE" "$i" "$current_revision"
       then
          dbg "Revision $current_revision of ${BUILD_TITLE[$i]} queued for pushing out to the pool"
       else
          err "Failed to enqueue rev. $current_revision of ${BUILD_TITLE[$i]}"
       fi
    done
-}
-
-# $1 -- build id
-# $2 -- build revision
-buildspec_to_buildqueue() { echo "$1@$2"; }
-
-# $1 -- buildqueue line
-buildqueue_to_build_id() { echo "$1" | cut -d"@" -f1; }
-
-# $1 -- buildqueue line
-buildqueue_to_build_rev() { echo "$1" | cut -d"@" -f2; }
-
-# Add a build the the build queue for passing out to the
-# machine pool for processing.  The actual push process is
-# carried out via. process_build_queue().
-# $1 -- build id
-# $2 -- build revision
-enqueue_build() {
-   test "x$1" = "x" && return 1
-   test "x$2" = "x" && return 2
-
-   queue_lock "$BUILD_QUEUE"
-   queue_add "$BUILD_QUEUE" $(buildspec_to_buildqueue "$1" "$2")
-   queue_unlock "$BUILD_QUEUE"
 }
 
 # $1 -- build id
@@ -444,57 +422,49 @@ __EOF__
 # Pass each entry in the build queue out to the machine pool for execution
 process_build_queue() {
    local runner=
-   local q=
-   local id=
-   local rev=
+   local build_id=
+   local build_rev=
    local build_script=
    local report_script=
    local ret=0
 
    while true
    do
-      # Pop a buildspec off the queue
-      queue_lock "$BUILD_QUEUE"
-      q=$(queue_pop_eldest "$BUILD_QUEUE")
-      queue_unlock "$BUILD_QUEUE"
-      id="$(buildqueue_to_build_id "$q")"
-      rev="$(buildqueue_to_build_rev "$q")"
-
-      # If we didn't get a spec we're at the end of the queue...
-      test -n "$rev" && test -n "$id" || break
+      # If we fail to dequeue a build we're at the end of the queue...
+      autobuilder_dequeue_build "$BUILD_QUEUE" || break
 
       # Select which machine in the pool should execute the build
       if ! runner=$(pick_runner_machine)
       then
-         err "Failed to select machine to run ${BUILD_TITLE[$id]} revision $rev"
+         err "Failed to select machine to run ${BUILD_TITLE[$build_id]} revision $build_rev"
          ret=$((ret+1))
          continue
       fi
 
       # Generate a build script for the runner
-      if ! build_script=$(generate_build_script $id $rev $runner)
+      if ! build_script=$(generate_build_script $build_id $build_rev $runner)
       then
-         err "Failed to generate build script for ${BUILD_TITLE[$id]} revision $rev"
+         err "Failed to generate build script for ${BUILD_TITLE[$build_id]} revision $build_rev"
          ret=$((ret+1))
          continue
       fi
 
       # Generate a report script for the runner
-      if ! report_script=$(generate_report_script $id $rev $runner)
+      if ! report_script=$(generate_report_script $build_id $build_rev $runner)
       then
-         err "Failed to generate reporting script for ${BUILD_TITLE[$id]} revision $rev"
+         err "Failed to generate reporting script for ${BUILD_TITLE[$build_id]} revision $build_rev"
          ret=$((ret+1))
          continue
       fi
 
       # Push the build out
-      if push_build_to_runner_machine "$rev" $runner "$build_script" "$report_script"
+      if push_build_to_runner_machine "$build_rev" $runner "$build_script" "$report_script"
       then
-         logts "${BUILD_TITLE[$id]} revision $rev to be processed by runner $runner"
-         set_last_build_revision "${BUILD_TITLE[$id]}" "$rev"
-         add_build_to_inflight_list "${BUILD_TITLE[$id]}" "$rev" "$runner"
+         logts "${BUILD_TITLE[$build_id]} revision $build_rev to be processed by runner $runner"
+         set_last_build_revision "${BUILD_TITLE[$build_id]}" "$build_rev"
+         add_build_to_inflight_list "${BUILD_TITLE[$build_id]}" "$build_rev" "$runner"
       else
-         err "Failed to push ${BUILD_TITLE[$id]} revision $rev build to runner $runner"
+         err "Failed to push ${BUILD_TITLE[$build_id]} revision $build_rev build to runner $runner"
          ret=$((ret+1))
          continue
       fi
