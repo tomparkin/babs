@@ -79,7 +79,14 @@ list_add_entry() {
       shift
    done
 
-   queue_lock "$lf" && queue_add "$lf" "$e" && queue_unlock "$lf" && echo "$id"
+   if queue_lock "$lf"
+   then
+      queue_add "$lf" "$e"
+      queue_unlock "$lf"
+      echo "$id"
+   else
+      return 1
+   fi
 }
 
 # $1 -- list file
