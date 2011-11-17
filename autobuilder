@@ -44,6 +44,7 @@ declare -a EMAIL
 . $(dirname $0)/libpmrpc.sh
 . $(dirname $0)/libqueue.sh
 . $(dirname $0)/libevent.sh
+. $(dirname $0)/liblist.sh
 . $(dirname $0)/libautobuilder.sh
 
 show_usage() {

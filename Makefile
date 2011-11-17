@@ -16,6 +16,7 @@ COMMONLIBS  += libqueue.sh
 COMMONLIBS  += libevent.sh
 COMMONLIBS  += libutil.sh
 COMMONLIBS  += libreport.sh
+COMMONLIBS	+= liblist.sh
 COMMONLIBS	+= libautobuilder.sh
 
 QUIET			:= @
