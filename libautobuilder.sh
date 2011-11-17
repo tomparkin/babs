@@ -125,9 +125,8 @@ autobuilder_dequeue_report() {
 # $3 -- build revision
 # $4 -- build runner ip
 autobuilder_add_inflight_build() {
-   local t=$(date +%H:%M:%S)
-   local d=$(date +%d/%m/%Y)
-   list_add_entry "$1" 5 "$t" "$d" "$2" "$3" "$4" > /dev/null
+   local d=$(date)
+   list_add_entry "$1" 4 "$d" "$2" "$3" "$4" > /dev/null
 }
 
 # $1 -- inflight list file
@@ -136,25 +135,21 @@ autobuilder_add_inflight_build() {
 #     build_title
 #     build_rev
 #     build_runner_ip
-#     build_time
 #     build_date
 autobuilder_rem_inflight_build() {
    local entry=
-   local btim=
    local bdat=
    local btit=
    local brev=
    local brip=
 
-   entry=$(list_lookup_by_parameter "$1" 4 "$2") || return 1
-   btim=$(list_parameter_parse "$1" "$entry" 1) || return 1
-   bdat=$(list_parameter_parse "$1" "$entry" 2) || return 1
-   btit=$(list_parameter_parse "$1" "$entry" 3) || return 1
-   brev=$(list_parameter_parse "$1" "$entry" 4) || return 1
-   brip=$(list_parameter_parse "$1" "$entry" 5) || return 1
+   entry=$(list_lookup_by_parameter "$1" 3 "$2") || return 1
+   bdat=$(list_parameter_parse "$1" "$entry" 1) || return 1
+   btit=$(list_parameter_parse "$1" "$entry" 2) || return 1
+   brev=$(list_parameter_parse "$1" "$entry" 3) || return 1
+   brip=$(list_parameter_parse "$1" "$entry" 4) || return 1
    list_remove_entry "$1" "$entry" || return 1
 
-   build_time="$btim"
    build_date="$bdat"
    build_title="$btit"
    build_rev="$brev"
