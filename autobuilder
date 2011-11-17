@@ -527,9 +527,44 @@ report_result() {
 }
 
 # Add a build request into the build queue
+# $1 -- build title
+# $2 -- revision
 request_build() {
-   err "Not implemented yet"
-   false
+   local build_title="$1"
+   local build_rev="$2"
+   local i=
+   local f=0
+
+   # Sanity check arguments
+   if util_string_is_blank "$build_title" || util_string_is_blank "$build_rev"
+   then
+      err "Missing build specification.  I expect to be passed <build_title> and <build_revision> on the commandline."
+      return 1
+   fi
+
+   # Check that the build is in the configuration file
+   for ((i=0; i<${NUMBER_OF_BUILDS}; i++))
+   do
+      test "$build_title" = "${BUILD_TITLE[$i]}" && f=1 && break
+   done
+
+   if test $f -le 0
+   then
+      err "Cannot locate build $build_title in configuration file $CONFIG_FILE_PATH"
+      err "Rejecting build request"
+      return 1
+   fi
+
+   # Everything looks OK, so let's schedule it
+   if autobuilder_enqueue_build "$BUILD_QUEUE" "$build_title" "$build_rev"
+   then
+      event_write "$EVENT_QUEUE" "$EVENT_ID_PROCESS_BUILD_QUEUE"
+      log "Queued $build_title revision $build_rev successfully"
+      return 0
+   else
+      err "Failed to enqueue $build_title revision $build_rev"
+      reutrn 1
+   fi
 }
 
 # Trigger a revision scan
@@ -568,9 +603,12 @@ REPORT_QUEUE="${WORKDIR}/${REPORT_QUEUE}"
 BUILD_HISTORY="${WORKDIR}/${BUILD_HISTORY}"
 
 case $1 in
+   # Don't call this directly -- it's for the jobrunner to report results...
+   report) shift; report_result $@ ;;
+
+   # Commands that a human might call
    scan) request_revision_scan ;;
    requestbuild) shift; request_build "$@" ;;
-   report) shift; report_result $@ ;;
    run)
       # Ensure we clean up after ourselves...
       trap "rm -f $BUILD_QUEUE $EVENT_QUEUE $REPORT_QUEUE" EXIT
