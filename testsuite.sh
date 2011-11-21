@@ -401,14 +401,12 @@ test_autobuilder_functions() {
    autobuilder_rem_inflight_build "$queue" 9999 && test_fail "autobuilder_rem_inflight_build() with bad arguments 1"
    test $(queue_length "$queue") -eq 2 || test_fail "queue_length() check 9"
 
-   autobuilder_rem_inflight_build "$queue" 123456 || test_fail "autobuilder_rem_inflight_build() with good arguments 1"
-   test "$build_title" = "Fizzbuzz_M5_testbuild" || test_fail "autobuilder_rem_inflight_build() check return 1"
+   autobuilder_rem_inflight_build "$queue" 123456 "Fizzbuzz_M5_testbuild" || test_fail "autobuilder_rem_inflight_build() with good arguments 1"
    test "$build_rev" = "123456" || test_fail "autobuilder_rem_inflight_build() check return 2"
    test "$build_runner_ip" = "10.0.0.92" || test_fail "autobuilder_rem_inflight_build() check return 3"
    test $(queue_length "$queue") -eq 1 || test_fail "queue_length() check 10"
 
-   autobuilder_rem_inflight_build "$queue" 456789 || test_fail "autobuilder_rem_inflight_build() with good arguments 2"
-   test "$build_title" = "Foobar_trunk_releasebuild" || test_fail "autobuilder_rem_inflight_build() check return 4"
+   autobuilder_rem_inflight_build "$queue" 456789 "Foobar_trunk_releasebuild" || test_fail "autobuilder_rem_inflight_build() with good arguments 2"
    test "$build_rev" = "456789" || test_fail "autobuilder_rem_inflight_build() check return 5"
    test "$build_runner_ip" = "10.0.1.42" || test_fail "autobuilder_rem_inflight_build() check return 6"
    test $(queue_length "$queue") -eq 0 || test_fail "queue_length() check 10"

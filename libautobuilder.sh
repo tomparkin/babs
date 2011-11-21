@@ -131,8 +131,8 @@ autobuilder_add_inflight_build() {
 
 # $1 -- inflight list file
 # $2 -- build revision
+# $3 -- build title
 # On successful return, sets:
-#     build_title
 #     build_rev
 #     build_runner_ip
 #     build_date
@@ -143,15 +143,13 @@ autobuilder_rem_inflight_build() {
    local brev=
    local brip=
 
-   entry=$(list_lookup_by_parameter "$1" 3 "$2") || return 1
+   entry=$(list_lookup_by_parameter "$1" 2 "$3" 3 "$2") || return 1
    bdat=$(list_parameter_parse "$1" "$entry" 1) || return 1
-   btit=$(list_parameter_parse "$1" "$entry" 2) || return 1
    brev=$(list_parameter_parse "$1" "$entry" 3) || return 1
    brip=$(list_parameter_parse "$1" "$entry" 4) || return 1
    list_remove_entry "$1" "$entry" || return 1
 
    build_date="$bdat"
-   build_title="$btit"
    build_rev="$brev"
    build_runner_ip="$brip"
    return 0
