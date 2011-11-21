@@ -471,26 +471,6 @@ process_report_queue() {
 
       email=$(util_trim_string ${EMAIL[$n]})
 
-      # Obtain report from jobrunner
-      local_build_report_path=$REPORT_STORE/${build_title}_${build_rev}_report.txt
-      if ! scp $build_runner_ip:$build_report_path $local_build_report_path > /dev/null
-      then
-         err "Failed to copy build report from the runner"
-         ret=$((ret+1))
-         continue
-      fi
-
-      # Email job report
-      if test -n "$email"
-      then
-         if ! email_report "$local_build_report_path" "$email" "$EMAIL_FROM" "Autobuilder: $build_title revision $build_rev : $build_result"
-         then
-            err "Failed to mail report"
-            ret=$((ret+1))
-            continue
-         fi
-      fi
-
       # Place the build in the history log
       local bruntime=$(( $(date +%s) - $(date -d "$build_date" +%s) ))
 
@@ -501,7 +481,24 @@ process_report_queue() {
       then
          err "Failed to store build in the history log, history will be inaccurate"
          ret=$((ret+1))
-         continue
+      fi
+
+      # Obtain report from jobrunner
+      local_build_report_path=$REPORT_STORE/${build_title}_${build_rev}_report.txt
+      if scp $build_runner_ip:$build_report_path $local_build_report_path > /dev/null
+      then
+         # Email job report
+         if test -n "$email"
+         then
+            if ! email_report "$local_build_report_path" "$email" "$EMAIL_FROM" "Autobuilder: $build_title revision $build_rev : $build_result"
+            then
+               err "Failed to mail report"
+               ret=$((ret+1))
+            fi
+         fi
+      else
+         err "Failed to copy build report from the runner"
+         ret=$((ret+1))
       fi
 
       # Tidy up build/report scripts
