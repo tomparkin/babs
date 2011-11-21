@@ -47,7 +47,7 @@ download_runscript() {
    local dl=${WORKDIR}/buildscripts/$(basename $s)
    mkdir -p "$(dirname $dl)" || return 1
    dbg "scp $ip:$s $dl"
-   scp $ip:$s $dl 2> /dev/null && echo $dl
+   scp $ip:$s $dl &> /dev/null && echo $dl
 }
 
 # $1 -- ip:script pair
@@ -62,7 +62,7 @@ report_result() {
    test "x$ip" = "x" && return 1
    test "x$s" = "x" && return 1
    dbg "ssh $ip $s $2 $3"
-   ssh $ip "$s $2 $3" /dev/null
+   ssh $ip "$s $2 $3" &> /dev/null
 }
 
 # $1 -- job script
@@ -124,6 +124,9 @@ do_run() {
       then
          err "Failed to report result to master -- results may be dropped :-("
       fi
+
+      # Tidy up runscript
+      rm -f "$runscript"
    done
 }
 
