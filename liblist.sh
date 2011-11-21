@@ -33,20 +33,44 @@ _get_param_from_line() {
 }
 
 # $1 -- file
-# $2 -- parameter position
-# $3 -- search term
+# $2... parameter position / search term pairs
 _lookup_line_in_file() {
+   local match=0
    local line=
    local p=
    local ret=1
-   queue_lock "$1"
+   local f="$1"
+   local -a position
+   local -a searchterm
+   local i=0
+   local max=0
+   shift
+
+   util_string_is_blank "$@" && return 1
+
+   # Read in parameter/search term pairs
+   while true
+   do
+      test -n "$1" && test -n "$2" || break
+      position[$max]=$1
+      searchterm[$max]=$2
+      max=$((max+1))
+      shift 2
+   done
+
+   queue_lock "$f"
    while read line
    do
       util_string_is_blank "$line" && break
-      p=$(_get_param_from_line "$line" "$2")
-      test "$p" = "$3" && echo "$line" && ret=0
-   done < "$1"
-   queue_unlock "$1"
+      match=1
+      for ((i=0;i<$max;i++))
+      do
+         p=$(_get_param_from_line "$line" "${position[$i]}")
+         test "$p" != "${searchterm[$i]}" && match=0 && break
+      done
+      test $match -eq 1 && echo "$line" && ret=0
+   done < "$f"
+   queue_unlock "$f"
    return $ret
 }
 
@@ -109,8 +133,7 @@ list_remove_entry() {
 }
 
 # $1 -- list file
-# $2 -- parameter position
-# $3 -- search term
+# $2... parameter position / search term pairs
 list_lookup_by_parameter() {
    test -f "$1" || return 1
    util_string_is_blank "$2" && return 1
@@ -119,7 +142,7 @@ list_lookup_by_parameter() {
    local line=
    local id=
 
-   line=$(_lookup_line_in_file "$1" "$2" "$3")
+   line=$(_lookup_line_in_file $@)
    util_string_is_blank "$line" && return 1
    id=$(_get_param_from_line "$line" "0")
    util_string_is_blank "$id" && return 1
