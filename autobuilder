@@ -456,7 +456,7 @@ process_report_queue() {
       logts "Runner $build_runner_ip reported $build_result for $build_title revision $build_rev"
 
       # Find this build in our "in flight" build list
-      if ! autobuilder_rem_inflight_build "$IN_FLIGHT_LOG" "$build_rev"
+      if ! autobuilder_rem_inflight_build "$IN_FLIGHT_LOG" "$build_rev" "$build_title"
       then
          err "Couldn't locate build on inflight list -- reports will be dropped :-("
          ret=$((ret+1))
