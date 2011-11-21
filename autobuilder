@@ -463,14 +463,6 @@ process_report_queue() {
          continue
       fi
 
-      # Figure out email distribution from build title
-      for ((n=0;n<$NUMBER_OF_BUILDS;n++))
-      do
-         test "${BUILD_TITLE[$n]}" = "$build_title" && break
-      done
-
-      email=$(util_trim_string ${EMAIL[$n]})
-
       # Place the build in the history log
       local bruntime=$(( $(date +%s) - $(date -d "$build_date" +%s) ))
 
@@ -485,8 +477,16 @@ process_report_queue() {
 
       # Obtain report from jobrunner
       local_build_report_path=$REPORT_STORE/${build_title}_${build_rev}_report.txt
-      if scp $build_runner_ip:$build_report_path $local_build_report_path > /dev/null
+      if pmrpc_pull_remote_file $REMOTE_USER $build_runner_ip $build_report_path $local_build_report_path > /dev/null
       then
+         # Figure out email distribution from build title
+         for ((n=0;n<$NUMBER_OF_BUILDS;n++))
+         do
+            test "${BUILD_TITLE[$n]}" = "$build_title" && break
+         done
+
+         email=$(util_trim_string ${EMAIL[$n]})
+
          # Email job report
          if test -n "$email"
          then
@@ -496,6 +496,10 @@ process_report_queue() {
                ret=$((ret+1))
             fi
          fi
+
+         # Tidy up report on jobrunner
+         pmrpc_run_command ${REMOTE_USER} $build_runner_ip  "rm $build_report_path" > /dev/null
+
       else
          err "Failed to copy build report from the runner"
          ret=$((ret+1))
