@@ -114,8 +114,20 @@ test_pmrpc_functions() {
    pmrpc_run_command && test_fail "pmrpc_run_command() with no args"
    pmrpc_run_command $(whoami) 1O.O.O.1 "cat /proc/cpuinfo" && test_fail "pmrpc_run_command() invalid IP"
    pmrpc_run_command $(whoami) 10.0.0.1 && test_fail "pmrpc_run_command() no command"
+   pmrpc_pull_remote_file && test_fail "pmrpc_pull_remote_file() with null args"
+   pmrpc_push_local_file && test_fail "pmrpc_push_local_file() with null args"
 
    pmrpc_run_command $(whoami) 127.0.0.1 "cat /proc/cpuinfo" || test_fail "pmrpc_run_command() localhost cpuinfo"
+
+   local tf=$(mktemp) || test_fail "Failed to generate temporary file"
+   dd if=/dev/urandom of=$tf bs=1024 count=4 || test_fail "Failed to seed temp file with random data"
+
+   pmrpc_push_local_file $(whoami) 127.0.0.1 $tf $tf || test_fail "pmrpc_push_local_file() with good args"
+   pmrpc_pull_remote_file $(whoami) 127.0.0.1 $tf ${tf}.new || test_fail "pmrpc_pull_remote_file() with good args"
+
+   cmp -s $tf ${tf}.new || test_fail "Copied files don't match"
+
+   rm -f ${tf}.new $tf
 }
 
 # ini
