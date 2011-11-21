@@ -15,4 +15,4 @@ mkdir -p "$NFS_ROOTFS" || die "$REPORT_ERR_CANNOT_CREATE_WORKROOT"
 
 # Now we want to run the build
 ( cd "$AUTOBUILDER_BUILDSYS_PATH" && export WORKROOT=$WORKROOT && export NFS_ROOTFS=$NFS_ROOTFS; make testbuild &> $AUTOBUILDER_BUILD_LOGFILE ) || die "$REPORT_ERR_BUILD_FAILED"
-report "Build succeeded"
+report_generate "Build succeeded"
