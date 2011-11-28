@@ -50,13 +50,17 @@ declare -a EMAIL
 
 show_usage() {
    cat << __EOF__
-   Name:    $(basename $0)
-   Desc:    TODO
-   Usage:   $(basename $0) [options] <cmd>
-            -h    print usage information
-            -f    configuration file [default: $CONFIG_FILE_PATH]
-            -r    <id@outcome@report ip:report path> report a build result
-            -i    <build name@revision> inject a build
+   Name:       $(basename $0)
+   Desc:       Automates building of project sandboxes for continuous integration
+   Usage:      $(basename $0) [options] <cmd>
+               -h    print usage information
+               -f    configuration file [default: $CONFIG_FILE_PATH]
+   Commands:   history [title]            print build history (optionally filter by build title)
+               poolinfo                   print information about the build machine pool
+               testcandidate [title]      print test candidate information
+               scan                       request a scan of the SCM trees to check for code updates
+               requestbuild [title] [rev] request a build of revision 'rev' of build 'title'
+               run                        run as the master build server
 __EOF__
 }
 
