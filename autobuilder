@@ -360,6 +360,7 @@ AUTOBUILDER_BRANCH_NAME=${BRANCH[$1]}
 AUTOBUILDER_REVISION=$2
 AUTOBUILDER_STABLE_TAG=${STABLE_TAG[$1]}
 AUTOBUILDER_BUILD_TARGET=${BUILD_TARGET[$1]}
+AUTOBUILDER_CACHE_ROOT=/export/home/autobuild/${BUILD_TITLE[$1]}/cache
 AUTOBUILDER_WORKROOT=/export/home/autobuild/${BUILD_TITLE[$1]}/build-${2}-$(date +%H-%M-%S_%d.%m.%Y)
 AUTOBUILDER_BUILDSYS_PATH=\${AUTOBUILDER_WORKROOT}/${BUILDSYS_PATH[$1]}
 AUTOBUILDER_MODULES_FILE=\${AUTOBUILDER_WORKROOT}/Products/${MODULES_FILE_ROOT[$1]}/modules
@@ -375,6 +376,10 @@ die() { report_generate "\$@"; exit 1; }
 # Ensure workroot can be created
 test -d "\$AUTOBUILDER_WORKROOT"  && die "\$REPORT_ERR_WORKROOT_EXISTS"
 mkdir -p "\$AUTOBUILDER_WORKROOT" || die "\$REPORT_ERR_CANNOT_CREATE_WORKROOT"
+
+# Seed checkout from pre-cached tarball, if any
+mkdir -p "\$AUTOBUILDER_CACHE_ROOT" || die "\$REPORT_ERR_MKDIR_FAILED"
+cache_seed_checkout "\$AUTOBUILDER_CACHE_ROOT" "\$AUTOBUILDER_WORKROOT"
 
 # The rest of this script is pasted from ${BUILD_SCRIPT[$1]}
 $(grep -v "^#\!" ${BUILD_SCRIPT[$1]})

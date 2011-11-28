@@ -4,6 +4,7 @@
 #
 # Functions for assembling a build report
 #
+readonly REPORT_ERR_MKDIR_FAILED="Failed to create directory"
 readonly REPORT_ERR_WORKROOT_EXISTS="WORKROOT already exists"
 readonly REPORT_ERR_CANNOT_CREATE_WORKROOT="Failed to create WORKROOT directory"
 readonly REPORT_ERR_CHECKOUT_FAILED="Checkout from SCM failed"
@@ -194,4 +195,27 @@ Build errors:
 $(report_extract_build_errors "$AUTOBUILDER_BUILD_LOGFILE")
 _EOF_
 fi
+}
+
+# Seed a checkout from a pre-cached tarball
+# $1 -- cache root
+# $2 -- checkout root
+cache_seed_checkout() {
+   test -d "$1" || return 1
+   test -d "$2" || return 1
+   local current="${1}/current"
+   test -h "$current" || return 1
+   ( cd "$2" && tar -xf "$current" )
+}
+
+# Generate a cached checkout tarball from a checkout
+# $1 -- checkout root
+# $2 -- cache root
+cache_update() {
+   test -d "$1" || return 1
+   test -d "$2" || return 2
+   local current="${2}/current"
+   local this="${2}/$(date +%Y%m%d_%H%M%S).tgz"
+   test -f "$this" && return 1
+   ( cd "$1" && tar -czf "$this" && rm $current && ln -s $this $current )
 }
