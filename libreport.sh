@@ -217,5 +217,5 @@ cache_update() {
    local current="${2}/current"
    local this="${2}/$(date +%Y%m%d_%H%M%S).tgz"
    test -f "$this" && return 1
-   ( cd "$1" && tar -czf "$this" && rm $current && ln -s $this $current )
+   ( cd "$1" && tar -czf "$this" . && rm $current && ln -s $this $current )
 }
