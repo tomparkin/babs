@@ -3,7 +3,9 @@
 # Lib function testing
 #
 
+if test -z "$NETWORK_IF"; then
 NETWORK_IF="eth0"
+fi
 
 test_fail() {
    local i=0
