@@ -3,6 +3,8 @@
 # Lib function testing
 #
 
+NETWORK_IF="eth0"
+
 test_fail() {
    local i=0
    echo "!!!! FAIL in function ${FUNCNAME[1]}(): $@" 1>&2
@@ -253,12 +255,12 @@ test_util_functions() {
    test "$(util_trim_string "  this is your life")" = "this is your life" || test_fail "util_trim_string() with good input output check 3"
 
    # get ip
-   util_get_ip_for_interface eth0 || test_fail "util_get_ip_for_interface() with good input"
+   util_get_ip_for_interface $NETWORK_IF || test_fail "util_get_ip_for_interface() with good input"
    util_get_ip_for_interface foobar && test_fail "util_get_ip_for_interface() with invalid interface"
 
    # find interface
-   local eth0_ip="$(util_get_ip_for_interface eth0)"
-   util_find_interface_on_network $eth0_ip || test_fail "util_find_interface_on_network() with good input"
+   local if_ip="$(util_get_ip_for_interface $NETWORK_IF)"
+   util_find_interface_on_network $if_ip || test_fail "util_find_interface_on_network() with good input"
    util_find_interface_on_network 123.456.789.101 && test_fail "util_find_interface_on_network() with bad input"
 
    # empty string
@@ -416,6 +418,13 @@ test_autobuilder_functions() {
 
    rm -f "$queue"
 }
+
+# Initial sanity check
+if ! ifconfig $NETWORK_IF
+then
+   echo "Whoops, no $NETWORK_IF on this box.  Please set NETWORK_IF at the top of the script."
+   exit 1
+fi
 
 test_log_functions
 test_util_functions
