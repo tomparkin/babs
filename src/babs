@@ -8,7 +8,7 @@ readonly EVENT_ID_BUILD_REPORT_READY="@@REPORT_READY"
 readonly EVENT_ID_PROCESS_BUILD_QUEUE="@@PROCESS_BUILD_QUEUE"
 
 # Absolute paths
-JOBRUNNER_PATH="/opt/jobrunner/bin/jobrunner"
+JOBRUNNER_PATH="/usr/local/bin/jobrunner"
 CONFIG_FILE_PATH="/etc/babs/babs.ini"
 
 # These are relative to $WORKDIR, and are set after config parsing
@@ -169,50 +169,20 @@ set_last_build_revision() {
    echo "$1 = $2" >> ${LAST_BUILT_LOG}.new && mv ${LAST_BUILT_LOG}.new ${LAST_BUILT_LOG}
 }
 
-# $1 -- modules file path
-# $2 -- branch name (optional)
-cvs_get_build_rev() {
-   local branch="HEAD"
-   local cmd=""
-   test "x$1" = "x" && return 1
-   test "x$2" && branch="$2"
-   cmd="cvs co -p -r $branch Products/${1}/modules 2>&1 | grep Revision | cut -d' ' -f3"
-   dbg "$cmd"
-   eval $cmd
-}
-
-# $1 -- modules file path
-# $2 -- branch name (optional)
-snssvn_get_build_rev() {
-   local branch="trunk"
-   local cmd=""
-   test "x$1" = "x" && return 1
-   test "x$2" != "x" && test "$2" != "trunk" && branch="branches/$2"
-   cmd="svn cat -r HEAD http://svn.pace.internal/svn/s-and-s/Products/${1}/${branch}/modules | grep Revision | cut -d' ' -f3"
-   dbg "$cmd"
-   eval $cmd
-}
-
 # $1 -- checkout path
 # $2 -- branch name (optional)
 git_get_build_rev() {
 	local branch="HEAD"
-	local cmd=""
 	test "x$1" = "x" && return 1
 	test "x$2" = "x" || branch="refs/heads/$2"
-	cmd="git ls-remote $1 | awk -v b="$branch" '$2 == b { print $1 }'"
-	dbg "$cmd"
-	eval $cmd
+	git ls-remote $1 | awk -v b="$branch" '$2 == b { print $1 }'
 }
 
 # $1 -- checkout path
 # $2 -- branch name (optional)
 svn_get_build_rev() {
-	local cmd=""
 	test "x$1" = "x" && return 1
-	cmd="svn info $1 | awk '/^Revision/ { print $2 }'"
-	dbg "$cmd"
-	eval $cmd
+	svn info $1 | awk '/^Revision/ { print $2 }'
 }
 
 # $1 -- build id number
