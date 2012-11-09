@@ -6,7 +6,7 @@ CHECKTREE	:= tree_is_clean
 TGZ_SUFFIX  :=
 endif
 REVISION		:= $(shell git rev-parse HEAD | cut -c-8)
-TARGETS		:= autobuilder-$(REVISION)$(TGZ_SUFFIX).tgz 
+TARGETS		:= babs-server-$(REVISION)$(TGZ_SUFFIX).tgz 
 TARGETS		+= jobrunner-$(REVISION)$(TGZ_SUFFIX).tgz
 COMMONLIBS	:= src/libini.sh
 COMMONLIBS	+= src/libjob.sh
@@ -28,18 +28,17 @@ tree_is_clean:
 	$(QUIET) git diff-index --quiet HEAD --
 
 clean:
-	rm -f autobuilder-*.tgz jobrunner-*.tgz
+	rm -f babs-server-*.tgz jobrunner-*.tgz
 
-autobuilder-%.tgz: src/autobuilder conf/autobuilder.ini $(COMMONLIBS)
+babs-server-%.tgz: src/babs conf/babs.ini $(COMMONLIBS)
 	$(QUIET) mkdir -p .staging/usr/local/bin .staging/etc/babs
-	$(QUIET) cp src/autobuilder $(COMMONLIBS) .staging/usr/local/bin
-	$(QUIET) cp conf/autobuilder.ini .staging/etc/babs
+	$(QUIET) cp src/babs $(COMMONLIBS) .staging/usr/local/bin
+	$(QUIET) cp conf/babs.ini .staging/etc/babs
 	$(QUIET) tar -czf $@ -C .staging usr etc
 	$(QUIET) rm -rf .staging
 
-jobrunner-%.tgz: src/jobrunner conf/jobrunner.ini $(COMMONLIBS)
-	$(QUIET) mkdir -p .staging/usr/local/bin .staging/etc/babs
+jobrunner-%.tgz: src/jobrunner $(COMMONLIBS)
+	$(QUIET) mkdir -p .staging/usr/local/bin
 	$(QUIET) cp src/jobrunner $(COMMONLIBS) .staging/usr/local/bin
-	$(QUIET) cp conf/jobrunner.ini .staging/etc/babs
-	$(QUIET) tar -czf $@ -C .staging usr etc
+	$(QUIET) tar -czf $@ -C .staging usr
 	$(QUIET) rm -rf .staging
