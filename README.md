@@ -8,8 +8,8 @@ style autobuilder implemented as a set of Bash scripts.
 Features
 --------
 
- * Minimal requirements.  babs should run happily anywhere that Bash, SSH, and
-   inotify-tools are available.
+ * Minimal requirements.  babs should run happily anywhere that Bash, SSH,
+   inotify-tools, and mstmp are available.
  * Build farm support.  babs uses a central-server model to hand jobs off to
    any of an arbitrary number of build machines.  Load is balanced across the
    farm by passing new jobs to the least-busy available slave.
