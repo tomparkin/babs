@@ -8,16 +8,16 @@ endif
 REVISION		:= $(shell git rev-parse HEAD | cut -c-8)
 TARGETS		:= autobuilder-$(REVISION)$(TGZ_SUFFIX).tgz 
 TARGETS		+= jobrunner-$(REVISION)$(TGZ_SUFFIX).tgz
-COMMONLIBS	:= libini.sh
-COMMONLIBS  += libjob.sh
-COMMONLIBS  += liblog.sh
-COMMONLIBS  += libpmrpc.sh
-COMMONLIBS  += libqueue.sh
-COMMONLIBS  += libevent.sh
-COMMONLIBS  += libutil.sh
-COMMONLIBS  += libreport.sh
-COMMONLIBS	+= liblist.sh
-COMMONLIBS	+= libautobuilder.sh
+COMMONLIBS	:= src/libini.sh
+COMMONLIBS	+= src/libjob.sh
+COMMONLIBS	+= src/liblog.sh
+COMMONLIBS	+= src/libpmrpc.sh
+COMMONLIBS	+= src/libqueue.sh
+COMMONLIBS	+= src/libevent.sh
+COMMONLIBS	+= src/libutil.sh
+COMMONLIBS	+= src/libreport.sh
+COMMONLIBS	+= src/liblist.sh
+COMMONLIBS	+= src/libautobuilder.sh
 
 QUIET			:= @
 
@@ -30,16 +30,16 @@ tree_is_clean:
 clean:
 	rm -f autobuilder-*.tgz jobrunner-*.tgz
 
-autobuilder-%.tgz: autobuilder autobuilder.ini $(COMMONLIBS)
-	$(QUIET) mkdir -p .staging/opt/autobuilder/bin .staging/etc
-	$(QUIET) cp autobuilder $(COMMONLIBS) .staging/opt/autobuilder/bin
-	$(QUIET) cp autobuilder.ini .staging/etc
-	$(QUIET) tar -czf $@ -C .staging opt etc
+autobuilder-%.tgz: src/autobuilder conf/autobuilder.ini $(COMMONLIBS)
+	$(QUIET) mkdir -p .staging/usr/local/bin .staging/etc/babs
+	$(QUIET) cp src/autobuilder $(COMMONLIBS) .staging/usr/local/bin
+	$(QUIET) cp conf/autobuilder.ini .staging/etc/babs
+	$(QUIET) tar -czf $@ -C .staging usr etc
 	$(QUIET) rm -rf .staging
 
-jobrunner-%.tgz: jobrunner jobrunner.ini $(COMMONLIBS)
-	$(QUIET) mkdir -p .staging/opt/jobrunner/bin .staging/etc
-	$(QUIET) cp jobrunner $(COMMONLIBS) .staging/opt/jobrunner/bin
-	$(QUIET) cp jobrunner.ini .staging/etc
-	$(QUIET) tar -czf $@ -C .staging opt etc
+jobrunner-%.tgz: src/jobrunner conf/jobrunner.ini $(COMMONLIBS)
+	$(QUIET) mkdir -p .staging/usr/local/bin .staging/etc/babs
+	$(QUIET) cp src/jobrunner $(COMMONLIBS) .staging/usr/local/bin
+	$(QUIET) cp conf/jobrunner.ini .staging/etc/babs
+	$(QUIET) tar -czf $@ -C .staging usr etc
 	$(QUIET) rm -rf .staging
