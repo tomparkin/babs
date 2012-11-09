@@ -30,12 +30,10 @@ EMAIL_FROM=
 NUMBER_OF_BUILDS=0
 declare -a BUILD_TITLE
 declare -a CHECKOUT_METHOD
-declare -a MODULES_FILE_ROOT
-declare -a BRANCH
+declare -a CHECKOUT_PATH
 declare -a BUILD_SCRIPT
+declare -a BRANCH
 declare -a BUILD_TARGET
-declare -a BUILDSYS_PATH
-declare -a STABLE_TAG
 declare -a EMAIL
 
 # Load library functions
@@ -99,29 +97,23 @@ parse_configuration() {
 
       BUILD_TITLE[$n]=$i
       CHECKOUT_METHOD[$n]=$(ini_get_value $CONFIG_FILE_PATH $i checkout_method)
-      MODULES_FILE_ROOT[$n]=$(ini_get_value $CONFIG_FILE_PATH $i modules_file_root)
-      BRANCH[$n]=$(ini_get_value $CONFIG_FILE_PATH $i branch)
+      CHECKOUT_PATH[$n]=$(ini_get_value $CONFIG_FILE_PATH $i checkout_path)
       BUILD_SCRIPT[$n]=$(ini_get_value $CONFIG_FILE_PATH $i build_script)
+      BRANCH[$n]=$(ini_get_value $CONFIG_FILE_PATH $i branch)
       BUILD_TARGET[$n]=$(ini_get_value $CONFIG_FILE_PATH $i build_target)
-      BUILDSYS_PATH[$n]=$(ini_get_value $CONFIG_FILE_PATH $i buildsys_path)
-      STABLE_TAG[$n]=$(ini_get_value $CONFIG_FILE_PATH $i stable_tag)
       EMAIL[$n]=$(ini_get_value $CONFIG_FILE_PATH $i email)
 
       # We must have at least this subset of possible values defined
       test "x${CHECKOUT_METHOD[$n]}" = "x" && return 1
-      test "x${MODULES_FILE_ROOT[$n]}" = "x" && return 1
+      test "x${CHECKOUT_PATH[$n]}" = "x" && return 1
       test "x${BUILD_SCRIPT[$n]}" = "x" && return 1
-      test "x${BUILD_TARGET[$n]}" = "x" && return 1
-      test "x${BUILDSYS_PATH[$n]}" = "x" && return 1
 
       dbg "Adding build ${BUILD_TITLE[$n]}:"
       dbg "    checkout method   = ${CHECKOUT_METHOD[$n]}"
-      dbg "    modules file root = ${MODULES_FILE_ROOT[$n]}"
-      dbg "    branch            = ${BRANCH[$n]}"
+      dbg "    checkout path     = ${CHECKOUT_PATH[$n]}"
       dbg "    build script      = ${BUILD_SCRIPT[$n]}"
-      dbg "    buildsys path     = ${BUILDSYS_PATH[$n]}"
+      dbg "    branch            = ${BRANCH[$n]}"
       dbg "    build target      = ${BUILD_TARGET[$n]}"
-      dbg "    stable tag        = ${STABLE_TAG[$n]}"
       dbg "    email             = ${EMAIL[$n]}"
 
       NUMBER_OF_BUILDS=$((NUMBER_OF_BUILDS+1))
@@ -201,13 +193,35 @@ snssvn_get_build_rev() {
    eval $cmd
 }
 
+# $1 -- checkout path
+# $2 -- branch name (optional)
+git_get_build_rev() {
+	local branch="HEAD"
+	local cmd=""
+	test "x$1" = "x" && return 1
+	test "x$2" = "x" || branch="refs/heads/$2"
+	cmd="git ls-remote $1 | awk -v b="$branch" '$2 == b { print $1 }'"
+	dbg "$cmd"
+	eval $cmd
+}
+
+# $1 -- checkout path
+# $2 -- branch name (optional)
+svn_get_build_rev() {
+	local cmd=""
+	test "x$1" = "x" && return 1
+	cmd="svn info $1 | awk '/^Revision/ { print $2 }'"
+	dbg "$cmd"
+	eval $cmd
+}
+
 # $1 -- build id number
 get_current_revision() {
    local current_rev=
    test "x$1" = "x" && return 1
    case ${CHECKOUT_METHOD[$1]} in
-      cvs) current_rev="$(cvs_get_build_rev ${MODULES_FILE_ROOT[$1]} ${BRANCH[$1]})" ;;
-      snssvn) current_rev="$(snssvn_get_build_rev ${MODULES_FILE_ROOT[$1]} ${BRANCH[$1]})" ;;
+      git) current_rev="$(git_get_build_rev ${CHECKOUT_PATH[$1]} ${BRANCH[$1]})";;
+      svn) current_rev="$(svn_get_build_rev ${CHECKOUT_PATH[$1]} ${BRANCH[$1]})";;
       *) err "Unsupported checkout method ${CHECKOUT_METHOD[$1]}" ;;
    esac
    current_rev=$(util_trim_string "$current_rev")
@@ -366,8 +380,6 @@ AUTOBUILDER_STABLE_TAG=${STABLE_TAG[$1]}
 AUTOBUILDER_BUILD_TARGET=${BUILD_TARGET[$1]}
 AUTOBUILDER_CACHE_ROOT=/export/home/autobuild/${BUILD_TITLE[$1]}/cache
 AUTOBUILDER_WORKROOT=/export/home/autobuild/${BUILD_TITLE[$1]}/build-${2}-$(date +%H-%M-%S_%d.%m.%Y)
-AUTOBUILDER_BUILDSYS_PATH=\${AUTOBUILDER_WORKROOT}/${BUILDSYS_PATH[$1]}
-AUTOBUILDER_MODULES_FILE=\${AUTOBUILDER_WORKROOT}/Products/${MODULES_FILE_ROOT[$1]}/modules
 AUTOBUILDER_CHECKOUT_LOGFILE=\${AUTOBUILDER_WORKROOT}/checkout-log.txt
 AUTOBUILDER_BUILD_LOGFILE=\${AUTOBUILDER_WORKROOT}/build-log.txt
 AUTOBUILDER_START_TIME=\$(date)
