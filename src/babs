@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Autobuilder script
+# The Bash Build Server
 #
 readonly CARGS="hf:"
 readonly EVENT_ID_SCAN_TREE="@@DO_TREE_SCAN"
@@ -9,7 +9,7 @@ readonly EVENT_ID_PROCESS_BUILD_QUEUE="@@PROCESS_BUILD_QUEUE"
 
 # Absolute paths
 JOBRUNNER_PATH="/opt/jobrunner/bin/jobrunner"
-CONFIG_FILE_PATH="/etc/autobuilder.ini"
+CONFIG_FILE_PATH="/etc/babs/babs.ini"
 
 # These are relative to $WORKDIR, and are set after config parsing
 IN_FLIGHT_LOG="$(basename $0)-in-flight.txt"

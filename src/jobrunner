@@ -2,16 +2,10 @@
 #
 # Job runner for autobuilder (et al)
 #
-readonly CARGS="hf:"
+readonly CARGS="h"
 
-# Absolute paths
-CONFIG_FILE_PATH="/etc/jobrunner.ini"
-
-# Relative to $WORKDIR, set after config parsing
-QUEUEFILE="$(basename $0)-jobqueue.txt"
-
-# Read in from the configuration file
-WORKDIR=
+WORKDIR=/tmp/jobrunner
+QUEUEFILE="${WORKFILE}/$(basename $0)-jobqueue.txt"
 
 . $(dirname $0)/libini.sh
 . $(dirname $0)/liblog.sh
@@ -133,7 +127,7 @@ do_run() {
 show_usage() {
    cat << __EOF__
    Name:       $(basename $0)
-   Desc:       TODO
+   Desc:       The Bash Build Server slave jobrunner process
    Usage:      $(basename $0) [options] <cmd>
                -h    print usage
    Commands:
@@ -144,12 +138,6 @@ show_usage() {
 __EOF__
 }
 
-parse_configuration() {
-   WORKDIR=$(ini_get_value $CONFIG_FILE_PATH global working_directory)
-   test "x$WORKDIR" = "x" && return 1
-   dbg "Working directory = $WORKDIR"
-}
-
 #
 # Entry point
 #
@@ -157,15 +145,12 @@ while getopts $CARGS opt
 do
    case $opt in
       h) show_usage; exit 0 ;;
-      f) CONFIG_FILE_PATH="$OPTARG" ;;
       *) die "Unrecognised option" ;;
    esac
 done
 shift $((OPTIND-1))
 cmd=$1
 shift
-
-parse_configuration || die "Failed to parse configuration $CONFIG_FILE_PATH"
 
 # Set up paths for workdir files
 mkdir -p "${WORKDIR}" || die "Failed to create working directory ${WORKDIR}"
