@@ -69,7 +69,7 @@ git clone $BABS_BUILD_PATH &> $CHECKOUT_LOG || {
 	exit 1
 }
 
-./src/testsuite &> $TEST_LOG || {
+./babs/src/testsuite &> $TEST_LOG || {
 	report "Test suite failed"
 	exit 1
 }
