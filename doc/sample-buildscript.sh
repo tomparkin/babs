@@ -62,7 +62,7 @@ __EOF__
 }
 
 CHECKOUT_LOG=$(pwd)/checkout_log.txt
-BUILD_LOG=$(pwd_/build_log.txt
+BUILD_LOG=$(pwd)/build_log.txt
 TEST_LOG=$(pwd)/test_log.txt
 START_TIME=$SECONDS
 
