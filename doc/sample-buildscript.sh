@@ -71,12 +71,12 @@ git clone $BABS_BUILD_PATH &> $CHECKOUT_LOG || {
 	exit 1
 }
 
-( cd babs && make ) &> $BUILD_LOG || {
+( cd babs && make &> $BUILD_LOG ) || {
 	report "Build process failed"
 	exit 1
 }
 
-./babs/src/testsuite &> $TEST_LOG || {
+./babs/src/testsuite.sh &> $TEST_LOG || {
 	report "Test suite failed"
 	exit 1
 }
