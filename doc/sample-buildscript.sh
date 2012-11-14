@@ -24,6 +24,9 @@
 #
 #   BABS_BUILD_TITLE
 #       This is the title of the babs build as defined in babs.ini
+#
+#   BABS_BUILD_PATH
+#       This is the checkout path for the build as defined in babs.ini
 #   
 #   BABS_BRANCH_NAME
 #       This is the branch name of the babs build as defined in babs.ini
@@ -38,3 +41,37 @@
 #       This is the build directory babs autogenerates for you to check out
 #       and build your project in.  babs will cd your script into this
 #       directory before it is executed.
+
+# The following is a simple script used by babs to execute the babs test suite
+
+# $1 -- status string
+report() {
+	cat << __EOF__
+babs test executed by $(whoami)@$(hostname) on $(date)
+  build name:		$BABS_BUILD_TITLE
+  build revision:	$BABS_REVISION
+
+  status:    		$1
+  runtime:   		$((SECONDS-START_TIME))s
+
+  work directory:	$BABS_WORKROOT
+  checkout log:		$CHECKOUT_LOG
+  test log:		$TEST_LOG
+__EOF__
+}
+
+CHECKOUT_LOG=$(pwd)/checkout_log.txt
+TEST_LOG=$(pwd)/test_log.txt
+START_TIME=$SECONDS
+
+git clone $BABS_BUILD_PATH &> $CHECKOUT_LOG || {
+	report "Failed to check source out from git"
+	exit 1
+}
+
+./src/testsuite &> $TEST_LOG || {
+	report "Test suite failed"
+	exit 1
+}
+
+report "Test suite succeeded"

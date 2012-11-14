@@ -344,6 +344,7 @@ generate_build_script() {
 
 # These variables are provided by $(basename $0)
 BABS_BUILD_TITLE=${BUILD_TITLE[$1]}
+BABS_BUILD_PATH=${CHECKOUT_PATH[$1]}
 BABS_BRANCH_NAME=${BRANCH[$1]}
 BABS_REVISION=$2
 BABS_BUILD_TARGET=${BUILD_TARGET[$1]}
