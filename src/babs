@@ -348,14 +348,8 @@ BABS_BRANCH_NAME=${BRANCH[$1]}
 BABS_REVISION=$2
 BABS_BUILD_TARGET=${BUILD_TARGET[$1]}
 BABS_WORKROOT=/$WORKDIR/${BUILD_TITLE[$1]}/build-${2}-$(date +%H-%M-%S_%d.%m.%Y)
-BABS_CHECKOUT_LOGFILE=\${BABS_WORKROOT}/checkout-log.txt
-BABS_BUILD_LOGFILE=\${BABS_WORKROOT}/build-log.txt
-BABS_START_TIME=\$(date)
 
-# These functions are provided by $(basename $0)
-$(grep -v "^#\!" $(dirname $0)/libreport.sh)
-
-die() { report_generate "\$@"; exit 1; }
+die() { echo "ERROR: \$@"; exit 1; }
 
 # Ensure workroot can be created
 test -d "\$BABS_WORKROOT"  && die "\$BABS_WORKROOT already exists"
@@ -364,9 +358,6 @@ cd "\$BABS_WORKROOT"
 
 # The rest of this script is pasted from ${BUILD_SCRIPT[$1]}
 $(grep -v "^#\!" ${BUILD_SCRIPT[$1]})
-
-# Generate a report if the build script didn't
-test $? -eq 0 && report_generate "Success" || report_generate "Failed"
 __EOF__
    test -f "$script" && chmod +x "$script" && echo "$script"
 }
