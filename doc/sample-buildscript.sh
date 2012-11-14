@@ -56,16 +56,23 @@ babs test executed by $(whoami)@$(hostname) on $(date)
 
   work directory:	$BABS_WORKROOT
   checkout log:		$CHECKOUT_LOG
+  build log:		$BUILD_LOG
   test log:		$TEST_LOG
 __EOF__
 }
 
 CHECKOUT_LOG=$(pwd)/checkout_log.txt
+BUILD_LOG=$(pwd_/build_log.txt
 TEST_LOG=$(pwd)/test_log.txt
 START_TIME=$SECONDS
 
 git clone $BABS_BUILD_PATH &> $CHECKOUT_LOG || {
 	report "Failed to check source out from git"
+	exit 1
+}
+
+( cd babs && make ) &> $BUILD_LOG || {
+	report "Build process failed"
 	exit 1
 }
 
