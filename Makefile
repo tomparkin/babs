@@ -15,7 +15,6 @@ COMMONLIBS	+= src/libpmrpc.sh
 COMMONLIBS	+= src/libqueue.sh
 COMMONLIBS	+= src/libevent.sh
 COMMONLIBS	+= src/libutil.sh
-COMMONLIBS	+= src/libreport.sh
 COMMONLIBS	+= src/liblist.sh
 COMMONLIBS	+= src/libautobuilder.sh
 
