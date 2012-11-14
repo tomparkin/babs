@@ -343,14 +343,14 @@ generate_build_script() {
 # from ${BUILD_SCRIPT[$1]} with some variables added by $(basename $0).
 
 # These variables are provided by $(basename $0)
-AUTOBUILDER_BUILD_TITLE=${BUILD_TITLE[$1]}
-AUTOBUILDER_BRANCH_NAME=${BRANCH[$1]}
-AUTOBUILDER_REVISION=$2
-AUTOBUILDER_BUILD_TARGET=${BUILD_TARGET[$1]}
-AUTOBUILDER_WORKROOT=/$WORKDIR/${BUILD_TITLE[$1]}/build-${2}-$(date +%H-%M-%S_%d.%m.%Y)
-AUTOBUILDER_CHECKOUT_LOGFILE=\${AUTOBUILDER_WORKROOT}/checkout-log.txt
-AUTOBUILDER_BUILD_LOGFILE=\${AUTOBUILDER_WORKROOT}/build-log.txt
-AUTOBUILDER_START_TIME=\$(date)
+BABS_BUILD_TITLE=${BUILD_TITLE[$1]}
+BABS_BRANCH_NAME=${BRANCH[$1]}
+BABS_REVISION=$2
+BABS_BUILD_TARGET=${BUILD_TARGET[$1]}
+BABS_WORKROOT=/$WORKDIR/${BUILD_TITLE[$1]}/build-${2}-$(date +%H-%M-%S_%d.%m.%Y)
+BABS_CHECKOUT_LOGFILE=\${BABS_WORKROOT}/checkout-log.txt
+BABS_BUILD_LOGFILE=\${BABS_WORKROOT}/build-log.txt
+BABS_START_TIME=\$(date)
 
 # These functions are provided by $(basename $0)
 $(grep -v "^#\!" $(dirname $0)/libreport.sh)
@@ -358,11 +358,15 @@ $(grep -v "^#\!" $(dirname $0)/libreport.sh)
 die() { report_generate "\$@"; exit 1; }
 
 # Ensure workroot can be created
-test -d "\$AUTOBUILDER_WORKROOT"  && die "\$REPORT_ERR_WORKROOT_EXISTS"
-mkdir -p "\$AUTOBUILDER_WORKROOT" || die "\$REPORT_ERR_CANNOT_CREATE_WORKROOT"
+test -d "\$BABS_WORKROOT"  && die "\$BABS_WORKROOT already exists"
+mkdir -p "\$BABS_WORKROOT" || die "Failed to create \$BABS_WORKROOT"
+cd "\$BABS_WORKROOT"
 
 # The rest of this script is pasted from ${BUILD_SCRIPT[$1]}
 $(grep -v "^#\!" ${BUILD_SCRIPT[$1]})
+
+# Generate a report if the build script didn't
+test $? -eq 0 && report_generate "Success" || report_generate "Failed"
 __EOF__
    test -f "$script" && chmod +x "$script" && echo "$script"
 }
@@ -452,7 +456,7 @@ process_report_queue() {
       local bruntime=$(( $(date +%s) - $(date -d "$build_date" +%s) ))
 
       # FIXME: don't guess about the script name :-(
-      local bpath=$(grep ^AUTOBUILDER_WORKROOT ${WORKDIR}/$(basename $0)-${build_title}-${build_rev}-${build_runner_ip}*BUILD.sh | cut -d"=" -f2)
+      local bpath=$(grep ^BABS_WORKROOT ${WORKDIR}/$(basename $0)-${build_title}-${build_rev}-${build_runner_ip}*BUILD.sh | cut -d"=" -f2)
 
       if ! autobuilder_add_build_to_history "$BUILD_HISTORY" "$(date)" "$build_title" "$build_rev" "$build_runner_ip"  "$bpath" "$build_result" "$bruntime"
       then

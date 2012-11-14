@@ -4,11 +4,6 @@
 #
 # Functions for assembling a build report
 #
-readonly REPORT_ERR_MKDIR_FAILED="Failed to create directory"
-readonly REPORT_ERR_WORKROOT_EXISTS="WORKROOT already exists"
-readonly REPORT_ERR_CANNOT_CREATE_WORKROOT="Failed to create WORKROOT directory"
-readonly REPORT_ERR_CHECKOUT_FAILED="Checkout from SCM failed"
-readonly REPORT_ERR_BUILD_FAILED="Product build failed"
 
 # Convert a number of seconds into nice time string
 # $1 -- number of seconds
@@ -31,12 +26,15 @@ report_get_my_ip_addresses() { ifconfig | awk '/inet addr/ { split($2,a,/:/); pr
 
 # Generate a report
 # $1 -- status string (one of REPORT_ERR_*)
+REPORT_IS_GENERATED=0
 report_generate() {
    test "x$1" = "x" && return 1
 
+   test $REPORT_IS_GENERATED -eq 0 || return 0
+
    local ipaddr=$(report_get_my_ip_addresses | tr "\n" "/")
    local finish_time=$(date)
-   local runtime=$(report_seconds_to_time_string $(( $(date -d "$finish_time" +%s) - $(date -d "$AUTOBUILDER_START_TIME" +%s) )))
+   local runtime=$(report_seconds_to_time_string $(( $(date -d "$finish_time" +%s) - $(date -d "$BABS_START_TIME" +%s) )))
    local stable_rev=
 
 # Print report header
@@ -47,15 +45,16 @@ cat << _EOF_
 #
 ######################################################################
 
-Build:                              $AUTOBUILDER_BUILD_TITLE
-Revision:                           $AUTOBUILDER_REVISION
+Build:                              $BABS_BUILD_TITLE
+Revision:                           $BABS_REVISION
 Build host:                         ${ipaddr%/}
-Build directory:                    $AUTOBUILDER_WORKROOT
-Build log:                          $AUTOBUILDER_BUILD_LOGFILE
-Start time:                         $AUTOBUILDER_START_TIME
+Build directory:                    $BABS_WORKROOT
+Build log:                          $BABS_BUILD_LOGFILE
+Start time:                         $BABS_START_TIME
 Finish time:                        $finish_time
 Build runtime:                      $runtime
 Status:                             $1
 
 _EOF_
+    REPORT_IS_GENERATED=1
 }
