@@ -20,7 +20,7 @@ CONF_TARGET	:= $(patsubst $(CONF_SRCDIR)/%,$(CONF_DESTDIR)/%,$(CONF_SOURCE))
 
 NETWORK_IF	:= $(shell ip addr | awk '/^[[:alnum:]].*,UP,/ && $$2 !~ /lo:/ { gsub(/:/, ""); print $$2; exit 0 }')
 
-.PHONY: test clean install all default
+.PHONY: test clean install all package default
 
 default: all
 install: all
@@ -32,6 +32,9 @@ clean:
 
 test:
 	NETWORK_IF=$(NETWORK_IF) $(EXEC_SRCDIR)/testsuite.sh
+
+package:
+	dpkg-buildpackage -b -ptrue
 
 $(EXEC_DESTDIR)/%: $(EXEC_SRCDIR)/%
 	mkdir -p $(dir $@)
