@@ -1,43 +1,38 @@
-ifdef IGNOREDIRTY
-CHECKTREE	:=
-TGZ_SUFFIX	:= -dirty
-else
-CHECKTREE	:= tree_is_clean
-TGZ_SUFFIX  :=
-endif
-REVISION		:= $(shell git rev-parse HEAD | cut -c-8)
-TARGETS		:= babs-server-$(REVISION)$(TGZ_SUFFIX).tgz 
-TARGETS		+= jobrunner-$(REVISION)$(TGZ_SUFFIX).tgz
-COMMONLIBS	:= src/libini.sh
-COMMONLIBS	+= src/libjob.sh
-COMMONLIBS	+= src/liblog.sh
-COMMONLIBS	+= src/libpmrpc.sh
-COMMONLIBS	+= src/libqueue.sh
-COMMONLIBS	+= src/libevent.sh
-COMMONLIBS	+= src/libutil.sh
-COMMONLIBS	+= src/liblist.sh
-COMMONLIBS	+= src/libautobuilder.sh
+EXEC_SRCDIR	:= src
+EXEC_DESTDIR	:= /usr/local/bin
+EXEC_SOURCE	+= $(EXEC_SRCDIR)/babs
+EXEC_SOURCE	+= $(EXEC_SRCDIR)/jobrunner
+EXEC_SOURCE	+= $(EXEC_SRCDIR)/libautobuilder.sh
+EXEC_SOURCE	+= $(EXEC_SRCDIR)/libevent.sh
+EXEC_SOURCE	+= $(EXEC_SRCDIR)/libini.sh
+EXEC_SOURCE	+= $(EXEC_SRCDIR)/libjob.sh
+EXEC_SOURCE	+= $(EXEC_SRCDIR)/liblist.sh
+EXEC_SOURCE	+= $(EXEC_SRCDIR)/liblog.sh
+EXEC_SOURCE	+= $(EXEC_SRCDIR)/libpmrpc.sh
+EXEC_SOURCE	+= $(EXEC_SRCDIR)/libqueue.sh
+EXEC_SOURCE	+= $(EXEC_SRCDIR)/libutil.sh
+EXEC_TARGET	:= $(patsubst $(EXEC_SRCDIR)/%,$(EXEC_DESTDIR)/%,$(EXEC_SOURCE))
 
-QUIET			:= @
+CONF_SRCDIR	:= conf
+CONF_DESTDIR	:= /etc/babs
+CONF_SOURCE	:= $(CONF_SRCDIR)/babs.ini
+CONF_TARGET	:= $(patsubst $(CONF_SRCDIR)/%,$(CONF_DESTDIR)/%,$(CONF_SOURCE))
 
-.PHONY: release tree_is_clean clean
-release: $(CHECKTREE) $(TARGETS)
+.PHONY: test clean all default
 
-tree_is_clean:
-	$(QUIET) git diff-index --quiet HEAD --
+default: all
+all: $(EXEC_TARGET) $(CONF_TARGET)
 
 clean:
-	rm -f babs-server-*.tgz jobrunner-*.tgz
+	rm -f $(EXEC_TARGET) $(CONF_TARGET)
+	rmdir $(dir $(CONF_TARGET))
 
-babs-server-%.tgz: src/babs conf/babs.ini $(COMMONLIBS)
-	$(QUIET) mkdir -p .staging/usr/local/bin .staging/etc/babs
-	$(QUIET) cp src/babs $(COMMONLIBS) .staging/usr/local/bin
-	$(QUIET) cp conf/babs.ini .staging/etc/babs
-	$(QUIET) tar -czf $@ -C .staging usr etc
-	$(QUIET) rm -rf .staging
+test:
+	$(SRCDIR)/testsuite.sh
 
-jobrunner-%.tgz: src/jobrunner $(COMMONLIBS)
-	$(QUIET) mkdir -p .staging/usr/local/bin
-	$(QUIET) cp src/jobrunner $(COMMONLIBS) .staging/usr/local/bin
-	$(QUIET) tar -czf $@ -C .staging usr
-	$(QUIET) rm -rf .staging
+$(EXEC_DESTDIR)/%: $(EXEC_SRCDIR)/%
+	cp $^ $@
+
+$(CONF_DESTDIR)/%: $(CONF_SRCDIR)/%
+	mkdir -p $(dir $@)
+	cp $^ $@
