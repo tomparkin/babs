@@ -18,9 +18,10 @@ CONF_DESTDIR	:= /etc/babs
 CONF_SOURCE	:= $(CONF_SRCDIR)/babs.ini
 CONF_TARGET	:= $(patsubst $(CONF_SRCDIR)/%,$(CONF_DESTDIR)/%,$(CONF_SOURCE))
 
-.PHONY: test clean all default
+.PHONY: test clean install all default
 
 default: all
+install: all
 all: $(EXEC_TARGET) $(CONF_TARGET)
 
 clean:
