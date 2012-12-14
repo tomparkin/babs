@@ -1,0 +1,11 @@
+Source: babs
+Maintainer: Tom Parkin <tom.parkin@gmail.com>
+Section: misc
+Priority: optional
+
+Package: babs
+Architecture: any
+Depends: inotify-tools, openssh-client
+Description: A build server written in Bash
+ babs is a simple Continuous Integration build server with
+ a small, simple set of dependencies
