@@ -18,6 +18,8 @@ CONF_DESTDIR	:= /etc/babs
 CONF_SOURCE	:= $(CONF_SRCDIR)/babs.ini
 CONF_TARGET	:= $(patsubst $(CONF_SRCDIR)/%,$(CONF_DESTDIR)/%,$(CONF_SOURCE))
 
+NETWORK_IF	:= $(shell ip addr | awk '/^[[:alnum:]].*,UP,/ && $$2 !~ /lo:/ { gsub(/:/, ""); print $$2; exit 0 }')
+
 .PHONY: test clean install all default
 
 default: all
@@ -26,12 +28,13 @@ all: $(EXEC_TARGET) $(CONF_TARGET)
 
 clean:
 	rm -f $(EXEC_TARGET) $(CONF_TARGET)
-	rmdir $(dir $(CONF_TARGET))
+	-rmdir $(dir $(CONF_TARGET))
 
 test:
-	$(SRCDIR)/testsuite.sh
+	NETWORK_IF=$(NETWORK_IF) $(EXEC_SRCDIR)/testsuite.sh
 
 $(EXEC_DESTDIR)/%: $(EXEC_SRCDIR)/%
+	mkdir -p $(dir $@)
 	cp $^ $@
 
 $(CONF_DESTDIR)/%: $(CONF_SRCDIR)/%
