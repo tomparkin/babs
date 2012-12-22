@@ -48,16 +48,16 @@
 report() {
 	cat << __EOF__
 babs test executed by $(whoami)@$(hostname) on $(date)
-  build name:		$BABS_BUILD_TITLE
-  build revision:	$BABS_REVISION
+build name:      $BABS_BUILD_TITLE
+build revision:  $BABS_REVISION
 
-  status:    		$1
-  runtime:   		$((SECONDS-START_TIME))s
+status:          $1
+runtime:         $((SECONDS-START_TIME))s
 
-  work directory:	$BABS_WORKROOT
-  checkout log:		$CHECKOUT_LOG
-  build log:		$BUILD_LOG
-  test log:		$TEST_LOG
+work directory:  $BABS_WORKROOT
+checkout log:    $CHECKOUT_LOG
+test log:        $TEST_LOG
+build log:       $BUILD_LOG
 __EOF__
 }
 
@@ -71,13 +71,13 @@ git clone $BABS_BUILD_PATH &> $CHECKOUT_LOG || {
 	exit 1
 }
 
-( cd babs && make &> $BUILD_LOG ) || {
-	report "Build process failed"
+( cd babs && make test &> $TEST_LOG ) || {
+	report "Test suite failed"
 	exit 1
 }
 
-./babs/src/testsuite.sh &> $TEST_LOG || {
-	report "Test suite failed"
+( cd babs && make package &> $BUILD_LOG ) || {
+	report "Packaging failed"
 	exit 1
 }
 
