@@ -1,0 +1,7 @@
+ * Add an init script (upstart job?) to start babs at boot
+ * Refactor jobrunner to run as a subcommand of babs rather than separate script
+ * Tidy up test suite output a little
+ * Support symbolic hostnames as well as IP for slave description in the .ini file
+ * Rework build report emails -- get rid of the "Autobuilder" references
+ * Allow more flexible configuration reload, ensure we don't drop build reports in any case
+ * Rework build directory naming; would be nice to order by date
