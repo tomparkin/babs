@@ -48,14 +48,13 @@ declare -a EMAIL
 
 show_usage() {
    cat << __EOF__
-   Name:       $(basename $0)
-   Desc:       Automates building of project sandboxes for continuous integration
+   Name:       $(basename $0) -- the BASH-based Build Server
+   Desc:       babs is a simple automated build server for Continuous Integration projects
    Usage:      $(basename $0) [options] <cmd>
                -h    print usage information
                -f    configuration file [default: $CONFIG_FILE_PATH]
    Commands:   history [title]            print build history (optionally filter by build title)
                poolinfo                   print information about the build machine pool
-               testcandidate [title]      print test candidate information
                scan                       request a scan of the SCM trees to check for code updates
                requestbuild [title] [rev] request a build of revision 'rev' of build 'title'
                run                        run as the master build server
@@ -628,35 +627,6 @@ request_history() {
    queue_unlock "$BUILD_HISTORY"
 }
 
-# Provide information about test candidate
-request_test_candidate() {
-   local str=""
-
-   util_string_is_blank "$1" && return 1
-
-   queue_lock "$BUILD_HISTORY"
-   while read line
-   do
-      # FIXME: don't use private list interface :-(
-      local t=$(_get_param_from_line "$line" 2)
-      local ip=$(_get_param_from_line "$line" 4)
-      local path=$(_get_param_from_line "$line" 5)
-      local res=$(_get_param_from_line "$line" 6)
-      if test "$t" = "$1" && test "$res" = "SUCCESS"
-      then
-         str="$t $ip $path"
-      fi
-   done < $BUILD_HISTORY
-   queue_unlock "$BUILD_HISTORY"
-
-   if util_string_is_blank "$str"
-   then
-      return 1
-   else
-      echo "$str"
-      return 0
-   fi
-}
 
 #
 # Entry point
@@ -693,7 +663,6 @@ case $1 in
    # Commands that a human might call
    history) shift; request_history $@ ;;
    poolinfo) request_machine_pool_info ;;
-   testcandidate) shift; request_test_candidate $@ ;;
    scan) request_revision_scan ;;
    requestbuild) shift; request_build "$@" ;;
    run)
