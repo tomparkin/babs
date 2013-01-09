@@ -657,8 +657,11 @@ REPORT_QUEUE="${WORKDIR}/${REPORT_QUEUE}"
 BUILD_HISTORY="${WORKDIR}/${BUILD_HISTORY}"
 
 case $1 in
-   # Don't call this directly -- it's for the jobrunner to report results...
+   # Don't call this directly -- it's for the jobrunner to report results
    report) shift; report_result $@ ;;
+
+   # Don't call this directly -- it's a wrapper for the jobrunner
+   jobrunner) shift; $JOBRUNNER_PATH $@ ;;
 
    # Commands that a human might call
    history) shift; request_history $@ ;;
