@@ -1,4 +1,4 @@
 README.md
-doc/DESIGN.txt
-doc/USAGE.txt
+doc/design.md
+doc/usage.md
 doc/sample-buildscript.sh
