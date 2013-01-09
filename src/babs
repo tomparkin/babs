@@ -47,17 +47,13 @@ declare -a EMAIL
 . $(dirname $0)/libautobuilder.sh
 
 show_usage() {
-   cat << __EOF__
-   Name:       $(basename $0) -- the BASH-based Build Server
-   Desc:       babs is a simple automated build server for Continuous Integration projects
-   Usage:      $(basename $0) [options] <cmd>
-               -h    print usage information
-               -f    configuration file [default: $CONFIG_FILE_PATH]
-   Commands:   history [title]            print build history (optionally filter by build title)
-               poolinfo                   print information about the build machine pool
-               scan                       request a scan of the SCM trees to check for code updates
-               requestbuild [title] [rev] request a build of revision 'rev' of build 'title'
-               run                        run as the master build server
+cat << __EOF__
+Name:       $(basename $0) -- the BASH-based Build Server
+Desc:       babs is a simple automated build server for Continuous Integration projects
+Usage:      $(basename $0) [options] <cmd>
+            -h    print usage information
+            -f    configuration file [default: $CONFIG_FILE_PATH]
+For more details of $(basename $0)' subcommands, run "$(basename $0) help"
 __EOF__
 }
 
@@ -627,6 +623,53 @@ request_history() {
    queue_unlock "$BUILD_HISTORY"
 }
 
+# $1 -- (optional) command
+request_help() {
+
+   case $1 in
+      jobrunner)
+         log "Run as slave jobrunner process"
+         log "Usage:    $(basename $0) jobrunner [run|queuelength|show|add]"
+         log "          run               enter event loop to wait for jobs"
+         log "          queuelength       print length of current job input queue"
+         log "          show              show current job queue"
+         log "          add               add job to input queue"
+      ;;
+      history)
+         log "Print build history"
+         log "Usage:    $(basename $0) history <build title>"
+         log "          <build title>     optionally filter history by build title"
+      ;;
+      poolinfo)
+         log "Print information about the build machine pool"
+         log "Usage:    $(basename $0) poolinfo"
+      ;;
+      scan)
+         log "Scan the SCM tree(s) in the configuration to check for updates"
+         log "Usage:    $(basename $0) scan"
+      ;;
+      requestbuild)
+         log "Request a build"
+         log "Usage:    $(basename $0) requestbuild <build title> <revision>"
+         log "          <build title>     title as per the configuration file"
+         log "          <revision>        revision to build"
+      ;;
+      run)
+         log "Run as the master build process"
+         log "Usage:    $(basename $0) run"
+      ;;
+      *)
+         log "Available subcommands:"
+         log "   history"
+         log "   poolinfo"
+         log "   scan"
+         log "   requestbuild"
+         log "   run"
+         log "   jobrunner"
+         log "You can run \"$(basename $0) help <subcommand>\" for detailed usage"
+      ;;
+   esac
+}
 
 #
 # Entry point
@@ -664,6 +707,7 @@ case $1 in
    jobrunner) shift; $JOBRUNNER_PATH $@ ;;
 
    # Commands that a human might call
+   help) shift; request_help $@ ;;
    history) shift; request_history $@ ;;
    poolinfo) request_machine_pool_info ;;
    scan) request_revision_scan ;;
@@ -700,5 +744,8 @@ case $1 in
          fi
       done
    ;;
-   *) die "Unrecognised command $1" ;;
+   *)
+      err "Unrecognised command $1"
+      log "Try running with -h or help for usage information"
+      ;;
 esac
