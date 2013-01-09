@@ -471,7 +471,7 @@ process_report_queue() {
          # Email job report
          if test -n "$email"
          then
-            if ! email_report "$local_build_report_path" "$email" "$EMAIL_FROM" "Autobuilder: $build_title revision $build_rev : $build_result"
+            if ! email_report "$local_build_report_path" "$email" "$EMAIL_FROM" "babs: $build_title revision $build_rev : $build_result"
             then
                err "Failed to mail report"
                ret=$((ret+1))
