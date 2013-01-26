@@ -1,5 +1,8 @@
  * Add an init script (upstart job?) to start babs at boot
  * Tidy up test suite output a little
  * Support symbolic hostnames as well as IP for slave description in the .ini file
+ * Support IPv6
+ * Vagrant test infrastructure
+ * Refactor core libs -- perhaps just a single library script?
  * Allow more flexible configuration reload, ensure we don't drop build reports in any case
  * Rework build directory naming; would be nice to order by date
