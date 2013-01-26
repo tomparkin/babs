@@ -7,7 +7,7 @@ Vagrant::Config.run do |config|
     master_config.vm.network :hostonly, "192.168.12.12"
     
     master_config.vm.provision :shell, :inline => "apt-get -y update"
-    master_config.vm.provision :shell, :inline => "apt-get -y install git debhelper debconf build-essential"
+    master_config.vm.provision :shell, :inline => "apt-get -y install git debhelper debconf build-essential inotify-tools msmtp"
     master_config.vm.provision :shell do |shell|
       shell.path = "getbabs.sh"
     end
