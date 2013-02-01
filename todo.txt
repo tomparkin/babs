@@ -6,3 +6,4 @@
  * Refactor core libs -- perhaps just a single library script?
  * Allow more flexible configuration reload, ensure we don't drop build reports in any case
  * Rework build directory naming; would be nice to order by date
+ * Integrate jobrunner functions into main babs script: the master will be the slave, and vice versa
