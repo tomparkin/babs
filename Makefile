@@ -1,7 +1,6 @@
 EXEC_SRCDIR	:= src
 EXEC_DESTDIR	:= /usr/local/bin
 EXEC_SOURCE	+= $(EXEC_SRCDIR)/babs
-EXEC_SOURCE	+= $(EXEC_SRCDIR)/jobrunner
 EXEC_SOURCE	+= $(EXEC_SRCDIR)/libautobuilder.sh
 EXEC_SOURCE	+= $(EXEC_SRCDIR)/libevent.sh
 EXEC_SOURCE	+= $(EXEC_SRCDIR)/libini.sh
