@@ -1,7 +1,8 @@
 #!/bin/bash
 #
-# The Bash Build Server
+# babs -- the BASH-based Build Server
 #
+# vim:et:sw=3 ts=3
 readonly CARGS="hf:"
 readonly EVENT_ID_SCAN_TREE="@@DO_TREE_SCAN"
 readonly EVENT_ID_BUILD_REPORT_READY="@@REPORT_READY"
