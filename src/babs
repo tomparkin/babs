@@ -10,7 +10,7 @@ readonly EVENT_ID_BUILD_REPORT_READY="@@REPORT_READY"
 readonly EVENT_ID_PROCESS_BUILD_QUEUE="@@PROCESS_BUILD_QUEUE"
 
 # Absolute paths
-JOBRUNNER_PATH="/usr/bin/jobrunner"
+JOBRUNNER_PATH="/usr/bin/babs"
 CONFIG_FILE_PATH="/etc/babs/babs.ini"
 
 # These are relative to $WORKDIR, and are set after config parsing
