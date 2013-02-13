@@ -191,3 +191,37 @@ autobuild_lookup_build_in_history() {
    local bres=
    local brti=
 }
+
+# $1 -- job queue file
+# On successful return, sets:a
+#    job_ipaddr
+#    job_id
+#    job_script
+#    report_ipaddr
+#    report_script
+autobuilder_dequeue_job() {
+    local entry=""
+    local jip=""
+    local jid=""
+    local jsc=""
+    local rip=""
+    local rsc=""
+
+    queue_lock "$1"
+    entry="$(queue_pop_eldest "$1")"
+    queue_unlock "$1"
+    util_string_is_blank "$entry" && return 1
+
+    jip="$(job_unpickle_scriptpath "$entry" | cut -d":" -f1)" || return 1
+    jid="$(job_unpickle_id "$entry")" || return 1
+    jsc="$(job_unpickle_scriptpath "$entry" | cut -d":" -f2)" || return 1
+    rip="$(job_unpickle_reportpath "$entry" | cut -d":" -f1)" || return 1
+    rsc="$(job_unpickle_reportpath "$entry" | cut -d":" -f2)" || return 1
+
+    job_ipaddr=$jip
+    job_id=$jid
+    job_script=$jsc
+    report_ipaddr=$rip
+    report_script=$rsc
+    return 0
+}
