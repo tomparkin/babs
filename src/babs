@@ -5,6 +5,7 @@
 # vim:et:sw=3 ts=3
 readonly CARGS="hf:"
 readonly EVENT_ID_SCAN_TREE="@@DO_TREE_SCAN"
+readonly EVENT_ID_JOB_READY="@@ADD_JOB"
 readonly EVENT_ID_BUILD_REPORT_READY="@@REPORT_READY"
 readonly EVENT_ID_PROCESS_BUILD_QUEUE="@@PROCESS_BUILD_QUEUE"
 
@@ -17,6 +18,7 @@ IN_FLIGHT_LOG="$(basename $0)-in-flight.txt"
 LAST_BUILT_LOG="$(basename $0)-lastbuilt.txt"
 EVENT_QUEUE="$(basename $0)-eventqueue.txt"
 BUILD_QUEUE="$(basename $0)-buildqueue.txt"
+RUN_QUEUE="$(basename $0)-runqueue.txt"
 REPORT_QUEUE="$(basename $0)-reportqueue.txt"
 REPORT_STORE="reportstore"
 BUILD_HISTORY="$(basename $0)-build-history.txt"
@@ -40,6 +42,7 @@ declare -a EMAIL
 # Load library functions
 . $(dirname $0)/liblog.sh
 . $(dirname $0)/libutil.sh
+. $(dirname $0)/libjob.sh
 . $(dirname $0)/libini.sh
 . $(dirname $0)/libpmrpc.sh
 . $(dirname $0)/libqueue.sh
@@ -492,7 +495,91 @@ process_report_queue() {
    return $ret
 }
 
+process_run_queue() {
+   local job_id=""
+   local job_ipaddr=""
+   local job_script=""
+   local report_ipaddr=""
+   local report_script=""
+   local runscript=""
+   local report_file=""
+   local result=""
+
+   mkdir -p ${WORKDIR}/buildscripts ${WORKDIR}/reports || return 1
+
+   while true
+   do
+      autobuilder_dequeue_job "$RUN_QUEUE" || break
+      runscript=${WORKDIR}/buildscripts/$(basename $job_script)
+      report_file=${WORKDIR}/reports/$(basename $job_script)_REPORT
+
+      logts "New job:"
+      logts "   master        = $job_ipaddr"
+      logts "   ID            = $job_id"
+      logts "   runscript     = $job_script"
+      logts "   reportscript  = $report_script"
+
+      if ! pmrpc_pull_remote_file $(whoami) $job_ipaddr $job_script $runscript
+      then
+         err "Failed to pull runscript from master"
+         continue
+      fi
+
+      # Execute job
+      logts "Executing job ID $job_id, report saved to $report_file"
+      if $runscript &> $report_file
+      then
+         logts "Job ID $job_id completed successfully"
+         result="SUCCESS"
+      else
+         logts "Job ID $job_id failed"
+         result="FAILURE"
+      fi
+
+      # Report result
+      if ! pmrpc_run_command $(whoami) $report_ipaddr "$report_script $result $report_file"
+      then
+         err "Failed to report result to master -- results may be dropped :-("
+      fi
+
+      # Tidy up runscript
+      rm -f "$runscript"
+   done
+}
+
+#
+# Command handlers
+#
+
+# Add a job to the job queue
+# $1 -- job id
+# $2 -- job path
+# $3 -- report path
+add_job_to_queue() {
+   if ! job_pickle "$1" "$2" "$3" > /dev/null 2>&1
+   then
+      err "Bad job specification"
+      err "   job id      = $1"
+      err "   job path    = $2"
+      err "   report path = $3"
+      return 1
+   fi
+
+   # Enqueue the build job
+   queue_lock $RUN_QUEUE
+   queue_add $RUN_QUEUE $(job_pickle "$1" "$2" "$3")
+   queue_unlock $RUN_QUEUE
+
+   # Generate a job ready event for the runner
+   event_write "$EVENT_QUEUE" "$EVENT_ID_JOB_READY"
+}
+
 # Add a build result to the reporting queue
+# $1 -- build title
+# $2 -- build revision
+# $3 -- runner ip
+# $4 -- build result
+# $5 -- report path
 report_result() {
    local s=
 
@@ -697,15 +784,16 @@ LAST_BUILT_LOG="${WORKDIR}/${LAST_BUILT_LOG}"
 IN_FLIGHT_LOG="${WORKDIR}/${IN_FLIGHT_LOG}"
 EVENT_QUEUE="${WORKDIR}/${EVENT_QUEUE}"
 BUILD_QUEUE="${WORKDIR}/${BUILD_QUEUE}"
+RUN_QUEUE="${WORKDIR}/${RUN_QUEUE}"
 REPORT_QUEUE="${WORKDIR}/${REPORT_QUEUE}"
 BUILD_HISTORY="${WORKDIR}/${BUILD_HISTORY}"
 
 case $1 in
-   # Don't call this directly -- it's for the jobrunner to report results
+   # Commands for internal use, don't call them directly
    report) shift; report_result $@ ;;
-
-   # Don't call this directly -- it's a wrapper for the jobrunner
-   jobrunner) shift; $JOBRUNNER_PATH $@ ;;
+   add) shift; add_job_to_queue "$1" "$2" "$3" ;;
+   queuelength) queue_length "$RUN_QUEUE" ;;
+   show) queue_dump "$RUN_QUEUE" ;;
 
    # Commands that a human might call
    help) shift; request_help $@ ;;
@@ -725,21 +813,10 @@ case $1 in
          then
             dbg "New event: $event"
             case $event in
-               $EVENT_ID_SCAN_TREE)
-                  do_tree_scan
-               ;;
-               $EVENT_ID_BUILD_REPORT_READY)
-                  if ! process_report_queue
-                  then
-                     err "Errors processing the report queue -- some reports may be dropped :-("
-                  fi
-               ;;
-               $EVENT_ID_PROCESS_BUILD_QUEUE)
-                  if ! process_build_queue
-                  then
-                     err "Errors processing the build queue -- some builds may be dropped :-("
-                  fi
-               ;;
+               $EVENT_ID_SCAN_TREE) do_tree_scan ;;
+               $EVENT_ID_BUILD_REPORT_READY) process_report_queue || err "Errors processing the report queue" ;;
+               $EVENT_ID_PROCESS_BUILD_QUEUE) process_build_queue || err "Errors procesing the build queue" ;;
+               $EVENT_ID_JOB_READY) process_run_queue || err "Errors processing job run queue" ;;
                *) err "Unrecognised input event \"$event\"" ;;
             esac
          fi
