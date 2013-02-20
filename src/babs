@@ -684,7 +684,7 @@ request_machine_pool_info() {
 request_history() {
    local buildtitle="$1"
    local line=
-   local fmt="%-30s %-35s %-10s %-10s %-10s\n"
+   local fmt="%-30s %-35s %-45s %-10s %-10s\n"
    local do_print=0
 
    printf "$fmt" "Date" "Build" "Revision" "Build time" "Result"
