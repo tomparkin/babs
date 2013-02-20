@@ -4,8 +4,6 @@
 #
 # Bash library of queue management functions
 #
-# Requires liblog.sh
-#
 
 # $1 -- queue file
 queue_trylock() {
@@ -88,6 +86,6 @@ queue_dump() {
    then
       awk '{print NR ". " $0}' $1
    else
-      log "Queue is empty"
+      echo "Queue is empty"
    fi
 }

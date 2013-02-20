@@ -290,7 +290,7 @@ do_tree_scan() {
       then
          local msg=
          test "x$previous_revision" = "x" && msg="never built before" || msg="last build was $previous_revision"
-         logts "${BUILD_TITLE[$i]} needs a build ($msg, current rev is $current_revision)"
+         log "${BUILD_TITLE[$i]} needs a build ($msg, current rev is $current_revision)"
       else
          dbg "${BUILD_TITLE[$i]} is up to date at revision $current_revision"
          continue
@@ -403,7 +403,7 @@ process_build_queue() {
       # Push the build out
       if push_build_to_runner_machine "$build_rev" $runner "$build_script" "$report_script"
       then
-         logts "${BUILD_TITLE[$build_id]} revision $build_rev to be processed by runner $runner"
+         log "${BUILD_TITLE[$build_id]} revision $build_rev to be processed by runner $runner"
          set_last_build_revision "${BUILD_TITLE[$build_id]}" "$build_rev"
          autobuilder_add_inflight_build "$IN_FLIGHT_LOG" "${BUILD_TITLE[$build_id]}" "$build_rev" "$runner"
       else
@@ -433,7 +433,7 @@ process_report_queue() {
       # Emtpy queue means we've nothing more to process
       autobuilder_dequeue_report "$REPORT_QUEUE" || break
 
-      logts "Runner $build_runner_ip reported $build_result for $build_title revision $build_rev"
+      log "Runner $build_runner_ip reported $build_result for $build_title revision $build_rev"
 
       # Find this build in our "in flight" build list
       if ! autobuilder_rem_inflight_build "$IN_FLIGHT_LOG" "$build_rev" "$build_title"
@@ -513,11 +513,11 @@ process_run_queue() {
       runscript=${WORKDIR}/buildscripts/$(basename $job_script)
       report_file=${WORKDIR}/reports/$(basename $job_script)_REPORT
 
-      logts "New job:"
-      logts "   master        = $job_ipaddr"
-      logts "   ID            = $job_id"
-      logts "   runscript     = $job_script"
-      logts "   reportscript  = $report_script"
+      log "New job:"
+      log "   master        = $job_ipaddr"
+      log "   ID            = $job_id"
+      log "   runscript     = $job_script"
+      log "   reportscript  = $report_script"
 
       if ! pmrpc_pull_remote_file $(whoami) $job_ipaddr $job_script $runscript
       then
@@ -526,13 +526,13 @@ process_run_queue() {
       fi
 
       # Execute job
-      logts "Executing job ID $job_id, report saved to $report_file"
+      log "Executing job ID $job_id, report saved to $report_file"
       if $runscript &> $report_file
       then
-         logts "Job ID $job_id completed successfully"
+         log "Job ID $job_id completed successfully"
          result="SUCCESS"
       else
-         logts "Job ID $job_id failed"
+         log "Job ID $job_id failed"
          result="FAILURE"
       fi
 
@@ -668,14 +668,14 @@ request_machine_pool_info() {
       mem=${mem% kB*}
       mem=$(echo "2 k $mem 1048576 / p" | dc)
 
-      log "Build pool machine $ip ($(util_trim_string "$(pmrpc_run_command $REMOTE_USER $ip "uptime")"))"
-      log "  Queue  : $(get_machine_queue_length $ip) builds queued"
-      log "  CPU    :" ${cpu}
-      log "  Cores  : ${cores}"
-      log "  Memory : ${mem} GB"
-      log "  Disk   :"
+      say "Build pool machine $ip ($(util_trim_string "$(pmrpc_run_command $REMOTE_USER $ip "uptime")"))"
+      say "  Queue  : $(get_machine_queue_length $ip) builds queued"
+      say "  CPU    :" ${cpu}
+      say "  Cores  : ${cores}"
+      say "  Memory : ${mem} GB"
+      say "  Disk   :"
       pmrpc_run_command $REMOTE_USER $ip "df -h"
-      log ""
+      say ""
 
    done
 }
@@ -716,45 +716,45 @@ request_help() {
 
    case $1 in
       jobrunner)
-         log "Run as slave jobrunner process"
-         log "Usage:    $(basename $0) jobrunner [run|queuelength|show|add]"
-         log "          run               enter event loop to wait for jobs"
-         log "          queuelength       print length of current job input queue"
-         log "          show              show current job queue"
-         log "          add               add job to input queue"
+         say "Run as slave jobrunner process"
+         say "Usage:    $(basename $0) jobrunner [run|queuelength|show|add]"
+         say "          run               enter event loop to wait for jobs"
+         say "          queuelength       print length of current job input queue"
+         say "          show              show current job queue"
+         say "          add               add job to input queue"
       ;;
       history)
-         log "Print build history"
-         log "Usage:    $(basename $0) history <build title>"
-         log "          <build title>     optionally filter history by build title"
+         say "Print build history"
+         say "Usage:    $(basename $0) history <build title>"
+         say "          <build title>     optionally filter history by build title"
       ;;
       poolinfo)
-         log "Print information about the build machine pool"
-         log "Usage:    $(basename $0) poolinfo"
+         say "Print information about the build machine pool"
+         say "Usage:    $(basename $0) poolinfo"
       ;;
       scan)
-         log "Scan the SCM tree(s) in the configuration to check for updates"
-         log "Usage:    $(basename $0) scan"
+         say "Scan the SCM tree(s) in the configuration to check for updates"
+         say "Usage:    $(basename $0) scan"
       ;;
       requestbuild)
-         log "Request a build"
-         log "Usage:    $(basename $0) requestbuild <build title> <revision>"
-         log "          <build title>     title as per the configuration file"
-         log "          <revision>        revision to build"
+         say "Request a build"
+         say "Usage:    $(basename $0) requestbuild <build title> <revision>"
+         say "          <build title>     title as per the configuration file"
+         say "          <revision>        revision to build"
       ;;
       run)
-         log "Run as the master build process"
-         log "Usage:    $(basename $0) run"
+         say "Run as the master build process"
+         say "Usage:    $(basename $0) run"
       ;;
       *)
-         log "Available subcommands:"
-         log "   history"
-         log "   poolinfo"
-         log "   scan"
-         log "   requestbuild"
-         log "   run"
-         log "   jobrunner"
-         log "You can run \"$(basename $0) help <subcommand>\" for detailed usage"
+         say "Available subcommands:"
+         say "   history"
+         say "   poolinfo"
+         say "   scan"
+         say "   requestbuild"
+         say "   run"
+         say "   jobrunner"
+         say "You can run \"$(basename $0) help <subcommand>\" for detailed usage"
       ;;
    esac
 }
@@ -805,6 +805,8 @@ case $1 in
       # Ensure we clean up after ourselves...
       trap "rm -f $BUILD_QUEUE $EVENT_QUEUE $REPORT_QUEUE" EXIT
 
+      log "monitoring scm trees for : ${BUILD_TITLE[@]}"
+
       # Event loop
       while true
       do
@@ -823,7 +825,7 @@ case $1 in
       done
    ;;
    *)
-      err "Unrecognised command $1"
-      log "Try running with -h or help for usage information"
+      say "Unrecognised command $1"
+      say "Try running with -h or help for usage information"
       ;;
 esac
